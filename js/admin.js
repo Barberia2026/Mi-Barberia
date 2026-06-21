@@ -4,13 +4,11 @@
 
 let calMonth = new Date();
 
-// Normaliza fecha que puede venir como "2026-06-21T05:00:00.000Z" o "2026-06-21"
 function normDate(val) {
   if (!val) return "";
   return String(val).substring(0, 10);
 }
 
-// Normaliza hora que puede venir como "1899-12-30T12:26:16.000Z" o "12:26"
 function normTime(val) {
   if (!val) return "";
   const s = String(val);
@@ -41,6 +39,7 @@ function init() {
   });
 
   initDayModal();
+  initRejectModal();
 
   if (sessionStorage.getItem("admin_ok") === "1") unlock();
 }
@@ -291,6 +290,143 @@ function initDayModal() {
   });
 }
 
+/* ---------------- MODAL DE RECHAZO ---------------- */
+
+let rejectAppt = null;
+
+function initRejectModal() {
+  // Crear el modal de rechazo dinámicamente
+  const modal = document.createElement("div");
+  modal.id = "rejectOverlay";
+  modal.style.cssText = `
+    display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);
+    z-index:1000;align-items:center;justify-content:center;
+  `;
+  modal.innerHTML = `
+    <div style="background:#fff;border-radius:16px;padding:24px;max-width:420px;width:90%;margin:auto;">
+      <h3 style="margin:0 0 8px;">❌ Rechazar cita</h3>
+      <p id="rejectClientName" style="font-weight:600;margin:0 0 16px;"></p>
+
+      <label style="display:block;margin-bottom:6px;font-size:14px;">¿Por qué no se puede?</label>
+      <input id="rejectReason" type="text" placeholder="Ej: Ya tengo ese horario lleno"
+        style="width:100%;padding:10px;border:1px solid #ccc;border-radius:8px;font-size:14px;box-sizing:border-box;margin-bottom:16px;" />
+
+      <label style="display:block;margin-bottom:6px;font-size:14px;">Sugerir otro horario (opcional)</label>
+      <div style="display:flex;gap:8px;margin-bottom:16px;">
+        <input id="rejectSuggestDate" type="date"
+          style="flex:1;padding:10px;border:1px solid #ccc;border-radius:8px;font-size:14px;" />
+        <select id="rejectSuggestTime"
+          style="flex:1;padding:10px;border:1px solid #ccc;border-radius:8px;font-size:14px;">
+          <option value="">Sin hora</option>
+        </select>
+      </div>
+
+      <div style="display:flex;gap:8px;">
+        <button id="btnRejectCancel"
+          style="flex:1;padding:12px;border:1px solid #ccc;border-radius:8px;background:#fff;cursor:pointer;">
+          Cancelar
+        </button>
+        <button id="btnRejectConfirm"
+          style="flex:1;padding:12px;border:none;border-radius:8px;background:#e53935;color:#fff;font-weight:600;cursor:pointer;">
+          Rechazar y avisar
+        </button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+
+  document.getElementById("btnRejectCancel").addEventListener("click", closeRejectModal);
+  document.getElementById("btnRejectConfirm").addEventListener("click", confirmReject);
+
+  // Llenar horas disponibles cuando cambia la fecha sugerida
+  document.getElementById("rejectSuggestDate").addEventListener("change", fillSuggestHours);
+}
+
+function fillSuggestHours() {
+  const dateVal = document.getElementById("rejectSuggestDate").value;
+  const sel = document.getElementById("rejectSuggestTime");
+  sel.innerHTML = '<option value="">Sin hora</option>';
+  if (!dateVal) return;
+
+  const slots = buildSlots();
+  const busy = Store.getAppointmentsForDate(dateVal).map((a) => normTime(a.time));
+  const breaks = Store.getBreaksForDate(dateVal);
+
+  slots.forEach((time) => {
+    const mins = timeToMinutes(time);
+    const inBreak = breaks.some((b) =>
+      mins >= timeToMinutes(b.startTime) && mins < timeToMinutes(b.endTime)
+    );
+    if (!busy.includes(time) && !inBreak) {
+      const opt = document.createElement("option");
+      opt.value = time;
+      opt.textContent = formatTime12h(time);
+      sel.appendChild(opt);
+    }
+  });
+}
+
+function openRejectModal(appt) {
+  rejectAppt = appt;
+  document.getElementById("rejectClientName").textContent =
+    `Cliente: ${appt.name} · ${normDate(appt.date)} · ${formatTime12h(normTime(appt.time))}`;
+  document.getElementById("rejectReason").value = "";
+
+  // Precargar fecha del día siguiente
+  const nextDay = findNextAvailableDay(fromDateKey(normDate(appt.date)));
+  const nextKey = toDateKey(nextDay);
+  document.getElementById("rejectSuggestDate").value = nextKey;
+  fillSuggestHours();
+
+  const modal = document.getElementById("rejectOverlay");
+  modal.style.display = "flex";
+}
+
+function closeRejectModal() {
+  document.getElementById("rejectOverlay").style.display = "none";
+  rejectAppt = null;
+}
+
+function confirmReject() {
+  if (!rejectAppt) return;
+
+  const reason = document.getElementById("rejectReason").value.trim();
+  const suggestDate = document.getElementById("rejectSuggestDate").value;
+  const suggestTime = document.getElementById("rejectSuggestTime").value;
+
+  if (!reason) {
+    alert("Por favor escribe el motivo del rechazo.");
+    return;
+  }
+
+  Store.updateAppointmentStatus(rejectAppt.id, "rechazada");
+
+  const dateKey = normDate(rejectAppt.date);
+  const timeVal = normTime(rejectAppt.time);
+
+  let msg =
+    `❌ Hola *${rejectAppt.name}*, te escribe *${CONFIG.businessName}*.\n\n` +
+    `Lo sentimos mucho, tu cita del *${formatLong(fromDateKey(dateKey))}* ` +
+    `a las *${formatTime12h(timeVal)}* no se puede confirmar.\n\n` +
+    `*Motivo:* ${reason}`;
+
+  if (suggestDate && suggestTime) {
+    msg += `\n\n✅ Te sugerimos el *${formatLong(fromDateKey(suggestDate))}* ` +
+      `a las *${formatTime12h(suggestTime)}*.\n` +
+      `Si te queda bien, entra aquí y agenda esa hora:\n` +
+      `👉 ${window.location.origin}/agenda.html`;
+  } else {
+    msg += `\n\nPor favor entra a nuestra página y elige otro horario:\n` +
+      `👉 ${window.location.origin}/agenda.html`;
+  }
+
+  msg += `\n\n¡Quedamos atentos! 💈`;
+
+  openWhatsAppToClient(rejectAppt.phone, msg);
+  closeRejectModal();
+  renderAppointments();
+}
+
 /* ---------------- LISTAS DE CITAS ---------------- */
 
 function renderAppointments() {
@@ -351,7 +487,7 @@ function renderApptCard(appt, withActions) {
     const rejectBtn = document.createElement("button");
     rejectBtn.className = "btn btn-reject btn-small";
     rejectBtn.textContent = "❌ Rechazar";
-    rejectBtn.addEventListener("click", () => rejectAppointment(appt));
+    rejectBtn.addEventListener("click", () => openRejectModal(appt));
 
     actions.appendChild(acceptBtn);
     actions.appendChild(rejectBtn);
@@ -372,28 +508,10 @@ function acceptAppointment(appt) {
   const timeVal = normTime(appt.time);
 
   const msg =
-    `✅ Hola ${appt.name}, tu cita en *${CONFIG.businessName}* quedó *confirmada* para el ` +
+    `✅ Hola *${appt.name}*, tu cita en *${CONFIG.businessName}* quedó *confirmada* para el ` +
     `*${formatLong(fromDateKey(dateKey))}* a las *${formatTime12h(timeVal)}*.` +
     (appt.service ? `\nServicio: ${appt.service}.` : "") +
     `\n\n¡Te esperamos! 💈`;
-
-  openWhatsAppToClient(appt.phone, msg);
-  renderAppointments();
-}
-
-function rejectAppointment(appt) {
-  Store.updateAppointmentStatus(appt.id, "rechazada");
-
-  const dateKey = normDate(appt.date);
-  const timeVal = normTime(appt.time);
-
-  const msg =
-    `❌ Hola ${appt.name}, te escribe *${CONFIG.businessName}*.\n\n` +
-    `Lo sentimos, tu cita para el *${formatLong(fromDateKey(dateKey))}* ` +
-    `a las *${formatTime12h(timeVal)}* no pudo ser confirmada en ese horario.\n\n` +
-    `Por favor ingresa a nuestra página y elige otro horario disponible:\n` +
-    `👉 ${window.location.origin}/agenda.html\n\n` +
-    `¡Quedamos atentos! 💈`;
 
   openWhatsAppToClient(appt.phone, msg);
   renderAppointments();
