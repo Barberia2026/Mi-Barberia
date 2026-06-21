@@ -295,35 +295,34 @@ function initDayModal() {
 let rejectAppt = null;
 
 function initRejectModal() {
-  // Crear el modal de rechazo dinámicamente
   const modal = document.createElement("div");
   modal.id = "rejectOverlay";
   modal.style.cssText = `
-    display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);
+    display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);
     z-index:1000;align-items:center;justify-content:center;
   `;
   modal.innerHTML = `
-    <div style="background:#fff;border-radius:16px;padding:24px;max-width:420px;width:90%;margin:auto;">
-      <h3 style="margin:0 0 8px;">❌ Rechazar cita</h3>
-      <p id="rejectClientName" style="font-weight:600;margin:0 0 16px;"></p>
+    <div style="background:#1e1e1e;border-radius:16px;padding:24px;max-width:420px;width:90%;margin:auto;border:1px solid #333;">
+      <h3 style="margin:0 0 8px;color:#fff;">❌ Rechazar cita</h3>
+      <p id="rejectClientName" style="font-weight:600;margin:0 0 16px;color:#f0c040;font-size:14px;"></p>
 
-      <label style="display:block;margin-bottom:6px;font-size:14px;">¿Por qué no se puede?</label>
+      <label style="display:block;margin-bottom:6px;font-size:14px;color:#ccc;">¿Por qué no se puede?</label>
       <input id="rejectReason" type="text" placeholder="Ej: Ya tengo ese horario lleno"
-        style="width:100%;padding:10px;border:1px solid #ccc;border-radius:8px;font-size:14px;box-sizing:border-box;margin-bottom:16px;" />
+        style="width:100%;padding:10px;border:1px solid #444;border-radius:8px;font-size:14px;box-sizing:border-box;margin-bottom:16px;background:#2a2a2a;color:#fff;" />
 
-      <label style="display:block;margin-bottom:6px;font-size:14px;">Sugerir otro horario (opcional)</label>
+      <label style="display:block;margin-bottom:6px;font-size:14px;color:#ccc;">Sugerir otro horario (opcional)</label>
       <div style="display:flex;gap:8px;margin-bottom:16px;">
         <input id="rejectSuggestDate" type="date"
-          style="flex:1;padding:10px;border:1px solid #ccc;border-radius:8px;font-size:14px;" />
+          style="flex:1;padding:10px;border:1px solid #444;border-radius:8px;font-size:14px;background:#2a2a2a;color:#fff;" />
         <select id="rejectSuggestTime"
-          style="flex:1;padding:10px;border:1px solid #ccc;border-radius:8px;font-size:14px;">
+          style="flex:1;padding:10px;border:1px solid #444;border-radius:8px;font-size:14px;background:#2a2a2a;color:#fff;">
           <option value="">Sin hora</option>
         </select>
       </div>
 
       <div style="display:flex;gap:8px;">
         <button id="btnRejectCancel"
-          style="flex:1;padding:12px;border:1px solid #ccc;border-radius:8px;background:#fff;cursor:pointer;">
+          style="flex:1;padding:12px;border:1px solid #555;border-radius:8px;background:#2a2a2a;color:#fff;cursor:pointer;">
           Cancelar
         </button>
         <button id="btnRejectConfirm"
@@ -337,8 +336,6 @@ function initRejectModal() {
 
   document.getElementById("btnRejectCancel").addEventListener("click", closeRejectModal);
   document.getElementById("btnRejectConfirm").addEventListener("click", confirmReject);
-
-  // Llenar horas disponibles cuando cambia la fecha sugerida
   document.getElementById("rejectSuggestDate").addEventListener("change", fillSuggestHours);
 }
 
@@ -372,7 +369,6 @@ function openRejectModal(appt) {
     `Cliente: ${appt.name} · ${normDate(appt.date)} · ${formatTime12h(normTime(appt.time))}`;
   document.getElementById("rejectReason").value = "";
 
-  // Precargar fecha del día siguiente
   const nextDay = findNextAvailableDay(fromDateKey(normDate(appt.date)));
   const nextKey = toDateKey(nextDay);
   document.getElementById("rejectSuggestDate").value = nextKey;
