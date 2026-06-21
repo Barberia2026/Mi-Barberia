@@ -303,10 +303,9 @@ function initRejectModal() {
   `;
   modal.innerHTML = `
     <div style="background:#1e1e1e;border-radius:16px;padding:24px;max-width:420px;width:90%;margin:auto;border:1px solid #333;">
-      <h3 style="margin:0 0 8px;color:#fff;">❌ Rechazar cita</h3>
-      <p id="rejectClientName" style="font-weight:600;margin:0 0 16px;color:#fff;font-size:14px;"></p>
-      <label style="display:block;margin-bottom:6px;font-size:14px;color:#ccc;">¿Por qué no se puede?</label>
-      <input id="rejectReason" type="text" placeholder="Ej: Ya tengo ese horario lleno"
+      <h3 style="margin:0 0 8px;color:#111;">❌ Rechazar cita</h3>
+      <p id="rejectClientName" style="font-weight:600;margin:0 0 16px;color:#333;font-size:14px;"></p>
+      <label style="display:block;margin-bottom:6px;font-size:14px;color:#333;">¿Por qué no se puede?</label>
         style="width:100%;padding:10px;border:1px solid #444;border-radius:8px;font-size:14px;box-sizing:border-box;margin-bottom:16px;background:#2a2a2a;color:#fff;" />
 
       <label style="display:block;margin-bottom:6px;font-size:14px;color:#ccc;">Sugerir otro horario (opcional)</label>
