@@ -13,9 +13,6 @@ async function init() {
 
   initServiceSelector();
 
-  // Si alguien más se adelantó y tomó la misma hora justo antes que
-  // nosotros, el Store nos avisa aquí para que el cliente no se quede
-  // pensando que ya quedó agendado en una hora que ya no está libre.
   setBookingConflictHandler(() => {
     alert("Uy, alguien más acaba de tomar ese horario. Por favor elige otro 🙏");
     Store.refresh().then(() => {
@@ -24,11 +21,8 @@ async function init() {
     });
   });
 
-  // Trae las citas/descansos más recientes antes de pintar el calendario
-  // por primera vez (solo hace algo si CONFIG.sheetApiUrl está configurado).
   await Store.refresh();
 
-  // Iniciar calendario en el mes actual sin preseleccionar día
   clientCalMonth = new Date();
   clientCalMonth.setDate(1);
   renderCalendar();
@@ -42,24 +36,19 @@ async function init() {
     renderCalendar();
   });
 
-  // Barra colapsada → al tocarla vuelve a mostrar el calendario y oculta el horario
   document.getElementById("calCollapsedBar").addEventListener("click", () => {
     const split = document.getElementById("scheduleSplit");
     split.classList.remove("has-day");
     selectedDateKey = null;
-    renderCalendar(); // quita el is-selected del calendario
+    renderCalendar();
   });
 
-  // Botones del modal
   document.getElementById("btnCancel").addEventListener("click", closeModal);
   document.getElementById("btnConfirm").addEventListener("click", confirmBooking);
   document.getElementById("overlay").addEventListener("click", (e) => {
     if (e.target.id === "overlay") closeModal();
   });
 
-  // Transición de salida hacia la página de bienvenida:
-  // misma pantalla con imagen y barras doradas cargando por los lados
-  // que se usa al pedir cita (bienvenida -> index), pero al revés.
   const homeLink = document.getElementById("btnGoHome");
   if (homeLink) {
     homeLink.addEventListener("click", (e) => {
@@ -76,8 +65,6 @@ async function init() {
     });
   }
 
-  // Revisa cada 20s si alguien más pidió/le aceptaron una cita, así un
-  // horario se ve "Ocupado" sin que el cliente tenga que recargar.
   if (Store.isCloud()) {
     setInterval(async () => {
       await Store.refresh();
@@ -113,7 +100,6 @@ function resetServiceSelector() {
 function revealContactFields() {
   const reveal = document.getElementById("contactReveal");
   reveal.classList.add("is-open");
-  // Lleva el foco al nombre, así el usuario sigue escribiendo sin tener que tocar de nuevo
   setTimeout(() => document.getElementById("inputName").focus(), 350);
 }
 
@@ -123,7 +109,6 @@ function hideContactFields() {
 
 /* ---------------- CALENDARIO (selector de día) ---------------- */
 
-// Rango de fechas que el negocio deja agendar: desde hoy hasta hoy + daysAhead
 function calendarBounds() {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -216,11 +201,9 @@ function selectDate(dateKey) {
   renderCalendar();
   renderDay();
 
-  // Activar estado "has-day": oculta calendario, muestra barra + horario
   document.getElementById("scheduleSplit").classList.add("has-day");
 
-  // Actualizar texto de la barra colapsada con el mes y día
-  const { MESES } = window; // ya definidos en dates.js
+  const { MESES } = window;
   const mesNombre = MESES ? MESES[d.getMonth()] : d.toLocaleString("es", { month: "long" });
   const mesLabel = mesNombre.charAt(0).toUpperCase() + mesNombre.slice(1) + " " + d.getFullYear();
   document.getElementById("ccbLabel").textContent = "📅 " + mesLabel + " — ver calendario";
@@ -229,7 +212,6 @@ function selectDate(dateKey) {
 function renderDay() {
   const date = fromDateKey(selectedDateKey);
 
-  // Actualizar chip del día seleccionado
   document.getElementById("selectedDayLabel").textContent = formatLong(date);
 
   const content = document.getElementById("dayContent");
@@ -260,7 +242,6 @@ function renderDay() {
 
   const dayBreaks = Store.getBreaksForDate(selectedDateKey);
 
-  // Grid de slots (el almuerzo se muestra dentro de la grilla, no como banner aparte)
   const grid = document.createElement("div");
   grid.className = "slots-grid";
 
@@ -313,7 +294,6 @@ function renderDay() {
   content.appendChild(grid);
 }
 
-// Tarjeta no-clickeable que representa un horario de comida dentro del tablero
 function renderMealFlap(b) {
   const flap = document.createElement("div");
   flap.className = "flap is-break";
@@ -335,7 +315,6 @@ function openModal(dateKey, time) {
   document.getElementById("inputName").value = "";
   document.getElementById("inputPhone").value = "";
 
-  // Asegura que se vea el formulario (y no la pantalla de éxito de una vez anterior)
   document.getElementById("formContent").style.display = "";
   document.getElementById("successScreen").classList.remove("is-visible");
 
@@ -362,10 +341,8 @@ function confirmBooking() {
 
   const { dateKey, time } = pendingBooking;
 
-  // Guarda la cita como "pendiente" hasta que el dueño la confirme
   Store.addAppointment({ date: dateKey, time, name, phone, service: selectedService });
 
-  // Mensaje que se enviará por WhatsApp al dueño
   const message =
     `Hola, soy ${name} (${phone}).\n` +
     `Quiero pedir una cita para el ${formatLong(fromDateKey(dateKey))} a las ${formatTime12h(time)}.\n` +
@@ -373,8 +350,6 @@ function confirmBooking() {
 
   const url = `https://wa.me/${CONFIG.whatsappNumber}?text=${encodeURIComponent(message)}`;
 
-  // Muestra la pantalla de éxito (✓) dentro del modal antes de irnos a WhatsApp,
-  // así el usuario ve confirmación visual de que su cita se envió.
   const formContentEl = document.getElementById("formContent");
   const successScreenEl = document.getElementById("successScreen");
   formContentEl.style.display = "none";
@@ -383,13 +358,9 @@ function confirmBooking() {
   function goToWhatsapp() {
     closeModal();
     renderDay();
-    window.location.href = url;
+    window.open(url, "_blank");
   }
 
-  // Esperamos a que el navegador realmente termine de pintar el check (dos
-  // frames de animación) antes de empezar a contar el tiempo de espera.
-  // Esto evita que, en algunos navegadores móviles, la redirección "se coma"
-  // el frame donde se dibuja la animación.
   requestAnimationFrame(() => {
     requestAnimationFrame(() => {
       setTimeout(goToWhatsapp, 1100);
