@@ -16,7 +16,7 @@ const CONFIG = {
 
   // Tu número de WhatsApp SIN signos, espacios ni el "+"
   // Ejemplo Colombia: 57 + número -> "573001234567"
-  whatsappNumber: "573001234567",
+  whatsappNumber: "573239523623",
 
   // Mensaje que se escribe automáticamente al tocar el botón
   // flotante de WhatsApp (el de "contacto rápido", no el de citas)
