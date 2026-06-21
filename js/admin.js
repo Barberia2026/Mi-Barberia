@@ -4,6 +4,23 @@
 
 let calMonth = new Date();
 
+// Normaliza fecha que puede venir como "2026-06-21T05:00:00.000Z" o "2026-06-21"
+function normDate(val) {
+  if (!val) return "";
+  return String(val).substring(0, 10);
+}
+
+// Normaliza hora que puede venir como "1899-12-30T12:26:16.000Z" o "12:26"
+function normTime(val) {
+  if (!val) return "";
+  const s = String(val);
+  if (s.includes("T")) {
+    const timePart = s.split("T")[1] || "";
+    return timePart.substring(0, 5);
+  }
+  return s.substring(0, 5);
+}
+
 function init() {
   document.getElementById("bizTagline").textContent =
     "Panel de " + CONFIG.businessName;
@@ -46,13 +63,10 @@ async function unlock() {
   calMonth = new Date();
   calMonth.setDate(1);
 
-  // Trae las citas/descansos más recientes (solo hace algo si
-  // CONFIG.sheetApiUrl está configurado).
   await Store.refresh();
   renderCalendar();
   renderAppointments();
 
-  // Revisa cada 20s si llegó una solicitud nueva de algún cliente.
   if (Store.isCloud() && !window._citasPolling) {
     window._citasPolling = true;
     setInterval(async () => {
@@ -281,7 +295,7 @@ function initDayModal() {
 
 function renderAppointments() {
   const all = Store.getAppointments().sort((a, b) =>
-    (a.date + a.time).localeCompare(b.date + b.time)
+    (normDate(a.date) + normTime(a.time)).localeCompare(normDate(b.date) + normTime(b.time))
   );
 
   const pending   = all.filter((a) => a.status === "pendiente");
@@ -306,10 +320,13 @@ function renderApptCard(appt, withActions) {
   const card = document.createElement("div");
   card.className = "appt";
 
+  const dateKey = normDate(appt.date);
+  const timeVal = normTime(appt.time);
+
   const info = document.createElement("div");
   info.innerHTML = `
     <div class="who">${escapeHtml(appt.name)} · ${escapeHtml(appt.phone)}</div>
-    <div class="when">${formatLong(fromDateKey(appt.date))} · ${formatTime12h(appt.time)}${appt.service ? " · " + escapeHtml(appt.service) : ""}</div>
+    <div class="when">${formatLong(fromDateKey(dateKey))} · ${formatTime12h(timeVal)}${appt.service ? " · " + escapeHtml(appt.service) : ""}</div>
   `;
 
   const right = document.createElement("div");
@@ -326,13 +343,11 @@ function renderApptCard(appt, withActions) {
     const actions = document.createElement("div");
     actions.className = "appt-actions";
 
-    // ── ACEPTAR: confirma la cita y abre WhatsApp al cliente ──
     const acceptBtn = document.createElement("button");
     acceptBtn.className = "btn btn-accept btn-small";
     acceptBtn.textContent = "✅ Aceptar";
     acceptBtn.addEventListener("click", () => acceptAppointment(appt));
 
-    // ── RECHAZAR: marca como rechazada y abre WhatsApp al cliente ──
     const rejectBtn = document.createElement("button");
     rejectBtn.className = "btn btn-reject btn-small";
     rejectBtn.textContent = "❌ Rechazar";
@@ -351,40 +366,36 @@ function renderApptCard(appt, withActions) {
 /* ---------------- ACCIONES SOBRE UNA CITA ---------------- */
 
 function acceptAppointment(appt) {
-  // 1. Marca como confirmada en el store
   Store.updateAppointmentStatus(appt.id, "confirmada");
 
-  // 2. Mensaje de confirmación para el cliente
+  const dateKey = normDate(appt.date);
+  const timeVal = normTime(appt.time);
+
   const msg =
     `✅ Hola ${appt.name}, tu cita en *${CONFIG.businessName}* quedó *confirmada* para el ` +
-    `*${formatLong(fromDateKey(appt.date))}* a las *${formatTime12h(appt.time)}*.` +
+    `*${formatLong(fromDateKey(dateKey))}* a las *${formatTime12h(timeVal)}*.` +
     (appt.service ? `\nServicio: ${appt.service}.` : "") +
     `\n\n¡Te esperamos! 💈`;
 
-  // 3. Abre WhatsApp al número del cliente
   openWhatsAppToClient(appt.phone, msg);
-
-  // 4. Refresca la lista
   renderAppointments();
 }
 
 function rejectAppointment(appt) {
-  // 1. Marca como rechazada en el store
   Store.updateAppointmentStatus(appt.id, "rechazada");
 
-  // 2. Mensaje de rechazo — le dice el motivo y lo invita a buscar otro horario
+  const dateKey = normDate(appt.date);
+  const timeVal = normTime(appt.time);
+
   const msg =
     `❌ Hola ${appt.name}, te escribe *${CONFIG.businessName}*.\n\n` +
-    `Lo sentimos, tu cita para el *${formatLong(fromDateKey(appt.date))}* ` +
-    `a las *${formatTime12h(appt.time)}* no pudo ser confirmada en ese horario.\n\n` +
+    `Lo sentimos, tu cita para el *${formatLong(fromDateKey(dateKey))}* ` +
+    `a las *${formatTime12h(timeVal)}* no pudo ser confirmada en ese horario.\n\n` +
     `Por favor ingresa a nuestra página y elige otro horario disponible:\n` +
-    `👉 ${window.location.origin}/index.html\n\n` +
+    `👉 ${window.location.origin}/agenda.html\n\n` +
     `¡Quedamos atentos! 💈`;
 
-  // 3. Abre WhatsApp al número del cliente con el mensaje de rechazo
   openWhatsAppToClient(appt.phone, msg);
-
-  // 4. Refresca la lista
   renderAppointments();
 }
 
