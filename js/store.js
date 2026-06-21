@@ -94,7 +94,6 @@ const Store = {
 
   addAppointment(appt) {
     appt.id = "a_" + Date.now() + "_" + Math.floor(Math.random() * 1000);
-    appt.createdAt = new Date().toISOString();
     appt.status = "pendiente";
 
     if (useCloud) {
