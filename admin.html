@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Panel del dueño · Agenda de Citas</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=IBM+Plex+Mono:wght@400;600&family=Inter:wght@400;500;600&display=swap"
+    rel="stylesheet"
+  />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body class="barber-bg">
+  <div class="page">
+    <header class="top">
+      <div>
+        <h1>Panel del dueño</h1>
+        <p id="bizTagline">Gestiona tus días y tus citas</p>
+      </div>
+      <div style="display:flex; align-items:center; gap:10px;">
+        <span class="badge">Privado</span>
+        <button class="btn btn-ghost btn-small" id="btnLogout" style="display:none;">🔒 Cerrar sesión</button>
+      </div>
+    </header>
+
+    <!-- Pantalla de acceso -->
+    <section class="sheet" id="lockScreen">
+      <h2>Acceso</h2>
+      <p class="sub">Inicia sesión para entrar al panel</p>
+      <div class="field">
+        <label for="userInput">Usuario</label>
+        <input type="text" id="userInput" autocomplete="username" placeholder="admin" />
+      </div>
+      <div class="field">
+        <label for="passInput">Contraseña</label>
+        <input type="password" id="passInput" autocomplete="current-password" placeholder="••••" />
+      </div>
+      <button class="btn btn-primary" id="btnUnlock">Entrar</button>
+    </section>
+
+    <!-- Contenido del panel (oculto hasta desbloquear) -->
+    <div id="panel" style="display: none">
+      <!-- Calendario de disponibilidad -->
+      <section class="sheet">
+        <div style="display:flex; align-items:center; justify-content:space-between;">
+          <h2 id="calTitle">—</h2>
+          <div style="display:flex; gap:6px;">
+            <button class="btn btn-ghost btn-small" id="btnPrevMonth">◀</button>
+            <button class="btn btn-ghost btn-small" id="btnNextMonth">▶</button>
+          </div>
+        </div>
+        <p class="sub">Toca un día para marcar descanso completo, bloquear unas horas (con el motivo), o quitar lo que ya tenías puesto.</p>
+        <div class="cal-grid" id="calGrid"></div>
+        <div class="cal-legend">
+          <span><i class="dot dot-normal"></i> Día normal</span>
+          <span><i class="dot dot-rest"></i> Descanso todo el día</span>
+          <span><i class="dot dot-partial"></i> Horas bloqueadas</span>
+        </div>
+      </section>
+
+      <!-- Solicitudes pendientes -->
+      <section class="sheet">
+        <h2>Solicitudes pendientes</h2>
+        <p class="sub">Acepta o rechaza lo que llegó por la página</p>
+        <div id="pendingList"></div>
+      </section>
+
+      <!-- Citas confirmadas -->
+      <section class="sheet">
+        <h2>Citas confirmadas</h2>
+        <div id="confirmedList"></div>
+      </section>
+    </div>
+
+    <footer class="foot">
+      <a href="bienvenida.html">← Inicio</a>
+      <span class="sep">·</span>
+      <a href="index.html">Ver página de citas</a>
+    </footer>
+  </div>
+
+  <!-- Modal: gestionar disponibilidad de un día -->
+  <div class="overlay" id="dayOverlay">
+    <div class="modal">
+      <button class="modal-close" id="btnDayClose" aria-label="Cerrar">✕</button>
+      <h3>Disponibilidad del día</h3>
+      <p class="modal-sub" id="dayModalDate">—</p>
+
+      <!-- Modo: todo el día -->
+      <div class="field">
+        <label>¿Vas a trabajar este día?</label>
+        <div class="scope-grid" id="dayModeGrid" style="grid-template-columns:repeat(2,1fr);">
+          <div class="scope-card is-active" data-mode="open">Sí, día normal</div>
+          <div class="scope-card" data-mode="closed">No, descanso todo el día</div>
+        </div>
+      </div>
+
+      <!-- Motivo del descanso de día completo -->
+      <div class="field" id="dayClosedReasonField" style="display:none;">
+        <label for="dayClosedReason">Motivo (opcional)</label>
+        <input type="text" id="dayClosedReason" placeholder="Ej: Vacaciones, día personal, festivo..." />
+      </div>
+
+      <!-- Bloqueos por hora (solo si el día queda abierto) -->
+      <div id="dayHourBlocksSection">
+        <div class="field" style="margin-top:4px;">
+          <label>¿Hay horas en las que no se puede agendar?</label>
+          <p class="sub" style="margin:-2px 0 12px;">Ej: desayuno, almuerzo, una cita personal, etc. El cliente verá el motivo y la duración.</p>
+        </div>
+
+        <div id="dayBreaksList" style="margin-bottom:14px;"></div>
+
+        <div class="field">
+          <label>Tipo</label>
+          <div class="meal-type-grid" id="breakTypeGrid">
+            <div class="meal-type-card is-active" data-type="desayuno">
+              <span class="icon">🍳</span><span class="label">Desayuno</span>
+            </div>
+            <div class="meal-type-card" data-type="almuerzo">
+              <span class="icon">🍽️</span><span class="label">Almuerzo</span>
+            </div>
+            <div class="meal-type-card" data-type="descanso">
+              <span class="icon">☕</span><span class="label">Otro motivo</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="field" id="breakCustomLabelField" style="display:none;">
+          <label for="breakCustomLabel">¿Cuál es el motivo?</label>
+          <input type="text" id="breakCustomLabel" placeholder="Ej: Mandado, reunión, cita médica..." />
+        </div>
+
+        <div class="field">
+          <label>¿De qué hora a qué hora?</label>
+          <div style="display:flex; gap:10px;">
+            <input type="time" id="breakStart" value="08:00" style="flex:1;" />
+            <input type="time" id="breakEnd" value="09:00" style="flex:1;" />
+          </div>
+        </div>
+
+        <button class="btn btn-ghost" id="btnAddBreak" type="button" style="width:100%;">+ Agregar este bloqueo de horas</button>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn btn-ghost" id="btnDayCancel" type="button">Cancelar</button>
+        <button class="btn btn-primary" id="btnDaySave" type="button">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+
+  <script src="js/config.js"></script>
+  <script src="js/dates.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/admin.js"></script>
+</body>
+</html>

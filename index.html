@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Barbería Estilo — Agenda tu Cita</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body class="barber-bg page-fade">
+  <a href="admin.html" class="corner-admin">Admin</a>
+
+  <div class="page">
+    <header class="top">
+      <p id="bizTagline">Corte, barba y estilo</p>
+      <h1 id="bizName">Barbería Estilo</h1>
+      <a href="bienvenida.html" class="home-link" id="btnGoHome">← Inicio</a>
+    </header>
+
+    <div class="barber-strip" aria-hidden="true"></div>
+    <div class="tools-row" aria-hidden="true">
+      <span>💈</span><span>✂️</span><span>🪒</span>
+    </div>
+
+    <div class="schedule-split" id="scheduleSplit">
+
+      <!-- Calendario completo (visible por defecto) -->
+      <section class="sheet calendar-sheet" id="calendarSheet">
+        <div class="calendar-header">
+          <button class="calendar-nav-btn" id="btnCalPrev" aria-label="Mes anterior" type="button">◀</button>
+          <h2 id="calMonthLabel">—</h2>
+          <button class="calendar-nav-btn" id="btnCalNext" aria-label="Mes siguiente" type="button">▶</button>
+        </div>
+        <div class="calendar-grid" id="calendarGrid"></div>
+        <div class="calendar-legend">
+          <span><i class="dot dot-today"></i> Hoy</span>
+          <span><i class="dot dot-selected"></i> Elegido</span>
+          <span><i class="dot dot-rest"></i> Cerrado</span>
+        </div>
+      </section>
+
+      <!-- Barra colapsada (visible solo cuando hay día seleccionado) -->
+      <button class="cal-collapsed-bar" id="calCollapsedBar" aria-label="Mostrar calendario" type="button">
+        <span class="ccb-icon">📅</span>
+        <span class="ccb-label" id="ccbLabel">—</span>
+        <span class="ccb-arrow">▼</span>
+      </button>
+
+      <!-- Panel de horarios -->
+      <section class="sheet slots-panel" id="slotsPanel">
+        <div class="day-chip-bar">
+          <span class="day-chip-label">Citas para</span>
+          <span class="day-chip" id="selectedDayChip">
+            <span class="day-chip-dot"></span>
+            <span id="selectedDayLabel">—</span>
+          </span>
+        </div>
+        <div id="dayContent"></div>
+      </section>
+
+    </div>
+  </div>
+
+  <!-- Modal de reserva -->
+  <div class="overlay" id="overlay">
+    <div class="modal">
+      <div class="form-content" id="formContent">
+        <button class="modal-close" id="btnCancel" aria-label="Cerrar">✕</button>
+        <h3>Confirma tu cita</h3>
+        <p class="modal-sub" id="modalSummary">—</p>
+
+        <div class="field">
+          <label>¿Qué servicio quieres?</label>
+          <div class="service-grid" id="serviceGrid">
+            <div class="service-card" data-service="Corte de pelo">
+              <span class="icon">✂️</span>
+              <span class="label">Corte de pelo</span>
+            </div>
+            <div class="service-card" data-service="Arreglo de barba">
+              <span class="icon">🪒</span>
+              <span class="label">Arreglo de barba</span>
+            </div>
+            <div class="service-card" data-service="Corte + Barba">
+              <span class="icon">💈</span>
+              <span class="label">Corte y barba</span>
+            </div>
+            <div class="service-card" data-service="Diseño / Marcado">
+              <span class="icon">🎯</span>
+              <span class="label">Diseño / Marcado</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="contact-reveal" id="contactReveal">
+          <div class="contact-reveal-inner">
+            <div class="field">
+              <label for="inputName">Tu nombre</label>
+              <input type="text" id="inputName" placeholder="Ej: Juan Pérez" autocomplete="given-name" />
+            </div>
+            <div class="field">
+              <label for="inputPhone">Tu WhatsApp</label>
+              <input type="tel" id="inputPhone" placeholder="Ej: 3001234567" autocomplete="tel" inputmode="numeric" />
+            </div>
+
+            <div class="modal-actions">
+              <button class="btn btn-primary" id="btnConfirm">📲 Enviar por WhatsApp</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Pantalla de éxito: aparece tras confirmar, antes de ir a WhatsApp -->
+      <div class="success-screen" id="successScreen">
+        <div class="success-check">
+          <svg viewBox="0 0 52 52">
+            <circle class="success-check-circle" cx="26" cy="26" r="24" fill="none"/>
+            <path class="success-check-mark" fill="none" d="M14 27l7 7 17-17"/>
+          </svg>
+        </div>
+        <h3>¡Cita enviada!</h3>
+        <p>Te llevamos a WhatsApp para confirmar…</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Pantalla de transición: se muestra al volver al inicio, antes de pasar a la bienvenida -->
+  <div class="cut-transition" id="cutTransition" aria-hidden="true">
+    <div class="cut-transition-img">
+      <img src="img/transicion-vuelta.jpg" alt="Barbero cortando el cabello de un niño en la barbería" />
+    </div>
+    <p class="cut-transition-text">Volviendo al inicio…</p>
+  </div>
+
+  <script src="js/config.js"></script>
+  <script src="js/dates.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/client.js"></script>
+  <script src="js/whatsapp-float.js"></script>
+</body>
+</html>
