@@ -302,25 +302,27 @@ function initRejectModal() {
     z-index:1000;align-items:center;justify-content:center;
   `;
   modal.innerHTML = `
-    <div style="background:#1e1e1e;border-radius:16px;padding:24px;max-width:420px;width:90%;margin:auto;border:1px solid #333;">
-      <h3 style="margin:0 0 8px;color:#111;">❌ Rechazar cita</h3>
+    <div style="background:#f5f0e8;border-radius:16px;padding:24px;max-width:420px;width:90%;margin:auto;border:1px solid #d4c9b0;">
+      <h3 style="margin:0 0 8px;color:#1a1a1a;">❌ Rechazar cita</h3>
       <p id="rejectClientName" style="font-weight:600;margin:0 0 16px;color:#333;font-size:14px;"></p>
-      <label style="display:block;margin-bottom:6px;font-size:14px;color:#333;">¿Por qué no se puede?</label>
-        style="width:100%;padding:10px;border:1px solid #444;border-radius:8px;font-size:14px;box-sizing:border-box;margin-bottom:16px;background:#2a2a2a;color:#fff;" />
 
-      <label style="display:block;margin-bottom:6px;font-size:14px;color:#ccc;">Sugerir otro horario (opcional)</label>
+      <label style="display:block;margin-bottom:6px;font-size:14px;color:#333;">¿Por qué no se puede?</label>
+      <input id="rejectReason" type="text" placeholder="Ej: Ya tengo ese horario lleno"
+        style="width:100%;padding:10px;border:1px solid #c5b99a;border-radius:8px;font-size:14px;box-sizing:border-box;margin-bottom:16px;background:#fff;color:#111;" />
+
+      <label style="display:block;margin-bottom:6px;font-size:14px;color:#333;">Sugerir otro horario (opcional)</label>
       <div style="display:flex;gap:8px;margin-bottom:16px;">
         <input id="rejectSuggestDate" type="date"
-          style="flex:1;padding:10px;border:1px solid #444;border-radius:8px;font-size:14px;background:#2a2a2a;color:#fff;" />
+          style="flex:1;padding:10px;border:1px solid #c5b99a;border-radius:8px;font-size:14px;background:#fff;color:#111;" />
         <select id="rejectSuggestTime"
-          style="flex:1;padding:10px;border:1px solid #444;border-radius:8px;font-size:14px;background:#2a2a2a;color:#fff;">
+          style="flex:1;padding:10px;border:1px solid #c5b99a;border-radius:8px;font-size:14px;background:#fff;color:#111;">
           <option value="">Sin hora</option>
         </select>
       </div>
 
       <div style="display:flex;gap:8px;">
         <button id="btnRejectCancel"
-          style="flex:1;padding:12px;border:1px solid #555;border-radius:8px;background:#2a2a2a;color:#fff;cursor:pointer;">
+          style="flex:1;padding:12px;border:1px solid #c5b99a;border-radius:8px;background:#fff;color:#333;cursor:pointer;">
           Cancelar
         </button>
         <button id="btnRejectConfirm"
@@ -364,7 +366,7 @@ function fillSuggestHours() {
 function openRejectModal(appt) {
   rejectAppt = appt;
   document.getElementById("rejectClientName").textContent =
-    `Cliente: ${appt.name} · ${normDate(appt.date)} · ${formatTime12h(normTime(appt.time))}`;
+    `Cliente: ${appt.name} · ${formatLong(fromDateKey(normDate(appt.date)))} · ${formatTime12h(normTime(appt.time))}`;
   document.getElementById("rejectReason").value = "";
 
   const nextDay = findNextAvailableDay(fromDateKey(normDate(appt.date)));
