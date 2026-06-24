@@ -60,6 +60,7 @@
     </div>
   </div>
 
+  <!-- Modal de reserva -->
   <div class="overlay" id="overlay">
     <div class="modal">
       <div class="form-content" id="formContent">
@@ -70,26 +71,39 @@
         <div class="field">
           <label>&#191;Qu&#233; servicio quieres?</label>
           <div class="service-grid" id="serviceGrid">
+
             <div class="service-card" data-service="Corte de pelo">
-              <span class="icon">&#9986;&#65039;</span>
+              <div class="service-img-wrap">
+                <img src="img/corte.jpg" alt="Corte de pelo" class="service-img" />
+              </div>
               <span class="label">Corte de pelo</span>
               <span class="price">$18.000</span>
             </div>
+
             <div class="service-card" data-service="Arreglo de barba">
-              <span class="icon">&#129298;</span>
+              <div class="service-img-wrap">
+                <img src="img/arreglo_barba.jpg" alt="Arreglo de barba" class="service-img" />
+              </div>
               <span class="label">Arreglo de barba</span>
               <span class="price">$7.000</span>
             </div>
+
             <div class="service-card" data-service="Corte + Barba">
-              <span class="icon">&#128136;</span>
+              <div class="service-img-wrap">
+                <img src="img/barba_y_pelo.jpg" alt="Corte y barba" class="service-img" />
+              </div>
               <span class="label">Corte y barba</span>
               <span class="price">$25.000</span>
             </div>
+
             <div class="service-card" data-service="Dise&#241;o / Marcado">
-              <span class="icon">&#127919;</span>
+              <div class="service-img-wrap">
+                <img src="img/marcado.jpg" alt="Dise&#241;o / Marcado" class="service-img" />
+              </div>
               <span class="label">Dise&#241;o / Marcado</span>
               <span class="price">$8.000</span>
             </div>
+
           </div>
         </div>
 
@@ -125,7 +139,7 @@
 
   <div class="cut-transition" id="cutTransition" aria-hidden="true">
     <div class="cut-transition-img">
-      <img src="img/transicion-vuelta.jpg" alt="Barbero cortando el cabello de un nino en la barberia" />
+      <img src="img/transicion-vuelta.jpg" alt="Barbero cortando" />
     </div>
     <p class="cut-transition-text">Volviendo al inicio&#8230;</p>
   </div>
