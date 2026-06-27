@@ -248,28 +248,96 @@ header.top p {
 .day-chip { display: inline-flex; align-items: center; gap: 5px; background: var(--gold); color: var(--gold-dk); font-family: var(--font-mono); font-size: 12px; font-weight: 700; letter-spacing: 0.04em; padding: 5px 12px; border-radius: 999px; box-shadow: 0 2px 8px rgba(212,168,67,0.35); }
 .day-chip-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--gold-dk); opacity: 0.6; }
 
-.slots-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px; }
-@media (max-width: 480px) { .slots-grid { grid-template-columns: repeat(3, 1fr); } }
-@media (max-width: 320px) { .slots-grid { grid-template-columns: repeat(2, 1fr); } }
+/* ─── SLOTS DE HORARIO PREMIUM ─── */
+.slots-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+@media (max-width: 360px) { .slots-grid { grid-template-columns: repeat(2, 1fr); } }
 
 .flap-compact {
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 2px; background: #fff; border: 1.5px solid var(--paper-dim); border-radius: 10px;
-  padding: 9px 4px; cursor: pointer;
-  transition: border-color 0.15s, background 0.15s, transform 0.12s, box-shadow 0.15s;
-  text-align: center; position: relative; overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  background: #fff;
+  border: 1.5px solid var(--paper-dim);
+  border-radius: 12px;
+  padding: 14px 6px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, transform 0.15s cubic-bezier(.34,1.56,.64,1), box-shadow 0.15s;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
 }
-.flap-compact::after { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: var(--sage); transform: scaleX(0); transform-origin: left; transition: transform 0.18s ease; border-radius: 2px 2px 0 0; }
-.flap-compact:hover { border-color: var(--sage); background: var(--sage-bg); transform: translateY(-2px); box-shadow: 0 3px 10px rgba(90,148,114,0.18); }
-.flap-compact:hover::after { transform: scaleX(1); }
-.flap-compact .fc-time { font-family: var(--font-mono); font-size: 13px; font-weight: 700; color: var(--ink); letter-spacing: 0.01em; line-height: 1.1; }
-.flap-compact .fc-status { font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.07em; text-transform: uppercase; color: var(--sage); font-weight: 600; line-height: 1; }
-.flap-compact.is-busy { background: rgba(0,0,0,0.02); opacity: 0.4; cursor: default; pointer-events: none; }
+.flap-compact::before {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--gold), var(--gold-lt));
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.2s ease;
+  border-radius: 0 0 2px 2px;
+}
+.flap-compact:hover {
+  border-color: var(--gold);
+  background: rgba(212,168,67,0.04);
+  transform: translateY(-3px);
+  box-shadow: 0 6px 20px rgba(212,168,67,0.2);
+}
+.flap-compact:hover::before { transform: scaleX(1); }
+
+.flap-compact .fc-time {
+  font-family: var(--font-serif);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--ink);
+  letter-spacing: 0.01em;
+  line-height: 1.1;
+}
+.flap-compact .fc-status {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--sage);
+  font-weight: 600;
+  line-height: 1;
+  padding: 2px 6px;
+  background: var(--sage-bg);
+  border-radius: 999px;
+  margin-top: 2px;
+}
+.flap-compact.is-busy {
+  background: rgba(0,0,0,0.02);
+  opacity: 0.38;
+  cursor: default;
+  pointer-events: none;
+}
 .flap-compact.is-busy .fc-time { color: var(--ink-soft); text-decoration: line-through; }
-.flap-compact.is-busy .fc-status { color: var(--ink-soft); }
-.flap-compact.is-break { background: rgba(212,168,67,0.07); border-color: rgba(212,168,67,0.3); border-style: dashed; cursor: default; pointer-events: none; grid-column: 1 / -1; flex-direction: row; gap: 8px; padding: 8px 14px; justify-content: center; border-radius: 8px; }
-.flap-compact.is-break .fc-time { font-size: 11px; color: var(--gold-dk); font-weight: 600; }
-.flap-compact.is-break .fc-status { color: var(--gold-dk); opacity: 0.7; }
+.flap-compact.is-busy .fc-status {
+  color: var(--rust);
+  background: var(--occupied);
+}
+.flap-compact.is-break {
+  background: rgba(212,168,67,0.06);
+  border-color: rgba(212,168,67,0.3);
+  border-style: dashed;
+  cursor: default;
+  pointer-events: none;
+  grid-column: 1 / -1;
+  flex-direction: row;
+  gap: 8px;
+  padding: 10px 14px;
+  justify-content: center;
+  border-radius: 10px;
+}
+.flap-compact.is-break .fc-time { font-size: 12px; color: var(--gold-dk); font-weight: 600; font-family: var(--font-mono); }
+.flap-compact.is-break .fc-status { color: var(--gold-dk); background: rgba(212,168,67,0.15); }
 
 .sheet h2 { font-family: var(--font-serif); font-size: 22px; font-weight: 700; margin: 0 0 4px; color: var(--ink); text-transform: capitalize; }
 .sheet .sub { color: var(--ink-mid); font-size: 13px; margin: 0 0 20px; font-family: var(--font-mono); letter-spacing: 0.04em; }
@@ -332,27 +400,83 @@ header.top p {
 .field input:focus { outline: none; border-color: var(--gold); box-shadow: 0 0 0 3px rgba(212,168,67,0.15); }
 .field input::placeholder { color: var(--paper-off); }
 
-.service-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 6px; }
+/* ─── TARJETAS DE SERVICIO CON IMAGEN ─── */
+.service-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 6px; }
 
 .service-card {
-  background: #fff; border: 1.5px solid var(--paper-dim);
-  border-radius: var(--radius-sm); padding: 0 0 12px 0;
-  text-align: center; cursor: pointer; overflow: hidden;
-  transition: border-color 0.15s, transform 0.12s cubic-bezier(.34,1.56,.64,1), background 0.15s, box-shadow 0.15s;
+  background: #fff;
+  border: 1.5px solid var(--paper-dim);
+  border-radius: var(--radius-sm);
+  padding: 0 0 14px 0;
+  text-align: center;
+  cursor: pointer;
+  overflow: hidden;
+  transition: border-color 0.2s, transform 0.15s cubic-bezier(.34,1.56,.64,1), box-shadow 0.2s;
   user-select: none;
+  position: relative;
 }
-.service-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-sm); }
+.service-card:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,0.12); border-color: var(--gold); }
 
-.service-img-wrap { width: 100%; height: 90px; overflow: hidden; border-radius: 8px 8px 0 0; margin-bottom: 8px; }
-.service-img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform 0.3s ease; }
-.service-card:hover .service-img { transform: scale(1.06); }
+.service-img-wrap {
+  width: 100%;
+  height: 100px;
+  overflow: hidden;
+  border-radius: 6px 6px 0 0;
+  margin-bottom: 10px;
+  position: relative;
+}
+.service-img-wrap::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom, transparent 40%, rgba(0,0,0,0.18) 100%);
+}
+.service-img {
+  width: 100%; height: 100%;
+  object-fit: cover; display: block;
+  transition: transform 0.4s ease;
+}
+.service-card:hover .service-img { transform: scale(1.08); }
 
-.service-card .icon { font-size: 24px; display: block; margin-bottom: 6px; line-height: 1; }
-.service-card .label { font-family: var(--font-display); font-weight: 600; font-size: 12px; display: block; color: var(--ink-mid); padding: 0 8px; }
-.service-card .price { display: block; font-family: var(--font-mono); font-size: 11px; font-weight: 600; color: var(--gold-dk); background: var(--gold-bg); border-radius: 999px; padding: 2px 8px; margin: 5px auto 0; width: fit-content; letter-spacing: 0.03em; }
-.service-card.is-active { border-color: var(--gold); background: var(--gold-bg); box-shadow: 0 2px 12px rgba(212,168,67,0.2); }
+.service-card .label {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 12px;
+  display: block;
+  color: var(--ink);
+  padding: 0 8px;
+  margin-bottom: 4px;
+}
+
+/* ─── PRECIO ELEGANTE ─── */
+.service-card .price {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-family: var(--font-serif);
+  font-size: 13px;
+  font-weight: 700;
+  font-style: italic;
+  color: var(--gold-dk);
+  background: linear-gradient(135deg, rgba(212,168,67,0.15), rgba(240,199,106,0.2));
+  border: 1px solid rgba(212,168,67,0.35);
+  border-radius: 999px;
+  padding: 3px 10px;
+  margin-top: 2px;
+  letter-spacing: 0.02em;
+  box-shadow: 0 1px 4px rgba(212,168,67,0.15);
+}
+
+.service-card.is-active {
+  border-color: var(--gold);
+  box-shadow: 0 4px 20px rgba(212,168,67,0.25);
+}
 .service-card.is-active .label { color: var(--gold-dk); }
-.service-card.is-active .price { background: rgba(212,168,67,0.25); color: var(--gold-dk); }
+.service-card.is-active .price {
+  background: linear-gradient(135deg, rgba(212,168,67,0.3), rgba(240,199,106,0.35));
+  border-color: var(--gold);
+  box-shadow: 0 2px 8px rgba(212,168,67,0.3);
+}
 
 .modal-actions { display: flex; gap: 10px; margin-top: 20px; }
 .modal-actions .btn { flex: 1; }
