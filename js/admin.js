@@ -1,530 +1,312 @@
-/* ============================================================
-   PANEL DEL DUEÑO
-   ============================================================ */
-
-let calMonth = new Date();
-
-function normDate(val) {
-  if (!val) return "";
-  return String(val).substring(0, 10);
-}
-
-function normTime(val) {
-  if (!val) return "";
-  const s = String(val);
-  if (s.includes("T")) {
-    const timePart = s.split("T")[1] || "";
-    return timePart.substring(0, 5);
-  }
-  return s.substring(0, 5);
-}
-
-function init() {
-  document.getElementById("bizTagline").textContent =
-    "Panel de " + CONFIG.businessName;
-
-  document.getElementById("btnUnlock").addEventListener("click", tryUnlock);
-  document.getElementById("passInput").addEventListener("keydown", (e) => {
-    if (e.key === "Enter") tryUnlock();
-  });
-  document.getElementById("btnLogout").addEventListener("click", logout);
-
-  document.getElementById("btnPrevMonth").addEventListener("click", () => {
-    calMonth.setMonth(calMonth.getMonth() - 1);
-    renderCalendar();
-  });
-  document.getElementById("btnNextMonth").addEventListener("click", () => {
-    calMonth.setMonth(calMonth.getMonth() + 1);
-    renderCalendar();
-  });
-
-  initDayModal();
-  initRejectModal();
-
-  if (sessionStorage.getItem("admin_ok") === "1") unlock();
-}
-
-function tryUnlock() {
-  const user = document.getElementById("userInput").value.trim();
-  const pass = document.getElementById("passInput").value.trim();
-  if (user === CONFIG.adminUser && pass === CONFIG.adminPassword) {
-    sessionStorage.setItem("admin_ok", "1");
-    unlock();
-  } else {
-    alert("Usuario o contraseña incorrectos.");
-  }
-}
-
-async function unlock() {
-  document.getElementById("lockScreen").style.display = "none";
-  document.getElementById("panel").style.display = "block";
-  document.getElementById("btnLogout").style.display = "inline-flex";
-  calMonth = new Date();
-  calMonth.setDate(1);
-
-  await Store.refresh();
-  renderCalendar();
-  renderAppointments();
-
-  if (Store.isCloud() && !window._citasPolling) {
-    window._citasPolling = true;
-    setInterval(async () => {
-      await Store.refresh();
-      renderCalendar();
-      renderAppointments();
-    }, 20000);
-  }
-}
-
-function logout() {
-  sessionStorage.removeItem("admin_ok");
-  window.location.href = "bienvenida.html";
-}
-
-/* ---------------- CALENDARIO DE DISPONIBILIDAD ---------------- */
-
-function renderCalendar() {
-  const title = `${MESES[calMonth.getMonth()]} ${calMonth.getFullYear()}`;
-  document.getElementById("calTitle").textContent =
-    title.charAt(0).toUpperCase() + title.slice(1);
-
-  const grid = document.getElementById("calGrid");
-  grid.innerHTML = "";
-
-  DOW_HEAD.forEach((d) => {
-    const head = document.createElement("div");
-    head.className = "cal-cell is-off";
-    head.textContent = d;
-    grid.appendChild(head);
-  });
-
-  const firstDay = new Date(calMonth.getFullYear(), calMonth.getMonth(), 1);
-  const startOffset = firstDay.getDay();
-  const daysInMonth = new Date(calMonth.getFullYear(), calMonth.getMonth() + 1, 0).getDate();
-
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  for (let i = 0; i < startOffset; i++) {
-    const empty = document.createElement("div");
-    empty.className = "cal-cell is-off";
-    grid.appendChild(empty);
-  }
-
-  for (let day = 1; day <= daysInMonth; day++) {
-    const date = new Date(calMonth.getFullYear(), calMonth.getMonth(), day);
-    const key = toDateKey(date);
-    const cell = document.createElement("div");
-    cell.textContent = day;
-
-    const isPast = date < today;
-
-    if (isPast) {
-      cell.className = "cal-cell is-off";
-    } else {
-      const isRest = Store.isRestDay(key);
-      const hasBreak = Store.getBreaksForDate(key).length > 0;
-      cell.className =
-        "cal-cell" +
-        (isRest ? " is-rest" : "") +
-        (!isRest && hasBreak ? " is-partial" : "");
-      cell.tabIndex = 0;
-      cell.addEventListener("click", () => openDayModal(key, date));
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Panel del Due&#241;o &middot; Barber&#237;a</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+  <style>
+    /* ── ADMIN EXTRA ── */
+    .admin-header {
+      display: flex; align-items: center; justify-content: space-between;
+      flex-wrap: wrap; gap: 12px;
+      margin-bottom: 28px; padding-bottom: 20px;
+      border-bottom: 1px solid var(--line);
     }
-    grid.appendChild(cell);
-  }
-}
+    .admin-header-left { display: flex; flex-direction: column; gap: 4px; }
+    .admin-header-left h1 {
+      font-family: var(--font-serif); font-size: 32px; font-weight: 900;
+      margin: 0;
+      background: linear-gradient(135deg, var(--paper) 40%, var(--gold-lt) 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    }
+    .admin-header-left p {
+      font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.16em;
+      text-transform: uppercase; color: var(--gold); margin: 0;
+    }
+    .admin-header-right { display: flex; align-items: center; gap: 10px; }
 
-/* ---------------- MODAL: DISPONIBILIDAD DE UN DÍA ---------------- */
+    /* Lock screen */
+    .lock-wrap {
+      max-width: 360px; margin: 40px auto 0;
+    }
+    .lock-wrap .sheet {
+      border-top: 4px solid var(--gold);
+    }
+    .lock-icon {
+      font-size: 40px; text-align: center; margin-bottom: 12px; display: block;
+    }
+    .lock-wrap h2 {
+      font-family: var(--font-serif); font-size: 24px; text-align: center;
+      margin: 0 0 4px; color: var(--ink);
+    }
+    .lock-wrap .sub { text-align: center; }
 
-let dayModalDateKey = null;
-let dayModalMode = "open";
-let dayModalBreaks = [];
-let selectedBreakType = "desayuno";
+    /* Sección sheet con acento */
+    .sheet-admin {
+      background: var(--paper); color: var(--ink);
+      border-radius: var(--radius); padding: 26px 22px;
+      margin-bottom: 20px; box-shadow: var(--shadow-md);
+      border-left: 4px solid var(--gold);
+    }
+    .sheet-admin h2 {
+      font-family: var(--font-serif); font-size: 20px; font-weight: 700;
+      margin: 0 0 4px; color: var(--ink);
+      display: flex; align-items: center; gap: 8px;
+    }
+    .sheet-admin .sub {
+      color: var(--ink-mid); font-size: 13px; margin: 0 0 18px;
+      font-family: var(--font-mono); letter-spacing: 0.03em;
+    }
 
-function openDayModal(dateKey, date) {
-  dayModalDateKey = dateKey;
-  dayModalBreaks = Store.getBreaksForDate(dateKey);
+    /* Calendar header */
+    .cal-header-row {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 6px;
+    }
+    .cal-header-row h2 {
+      font-family: var(--font-serif); font-size: 20px; font-weight: 700;
+      margin: 0; color: var(--ink);
+    }
+    .cal-nav { display: flex; gap: 6px; }
 
-  const restInfo = Store.getRestDay(dateKey);
-  dayModalMode = restInfo ? "closed" : "open";
+    /* Cita card mejorada */
+    .appt {
+      border: 1.5px solid var(--paper-dim);
+      border-radius: var(--radius-sm);
+      padding: 14px 16px; margin-bottom: 10px;
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 10px; flex-wrap: wrap; background: #fff;
+      transition: box-shadow 0.15s, border-color 0.15s;
+    }
+    .appt:hover { box-shadow: var(--shadow-sm); border-color: var(--gold); }
+    .appt .who {
+      font-family: var(--font-display); font-weight: 700;
+      font-size: 14px; color: var(--ink);
+    }
+    .appt .when {
+      font-family: var(--font-mono); font-size: 12px; color: var(--ink-soft);
+      margin-top: 3px;
+    }
+    .appt-left { display: flex; align-items: center; gap: 12px; }
+    .appt-avatar {
+      width: 40px; height: 40px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--gold), var(--gold-lt));
+      display: flex; align-items: center; justify-content: center;
+      font-family: var(--font-serif); font-size: 16px; font-weight: 700;
+      color: var(--gold-dk); flex-shrink: 0;
+      box-shadow: 0 2px 8px rgba(212,168,67,0.3);
+    }
 
-  document.getElementById("dayModalDate").textContent = formatLong(date);
-  document.getElementById("dayClosedReason").value = restInfo ? restInfo.reason || "" : "";
+    /* Stats bar */
+    .stats-bar {
+      display: grid; grid-template-columns: repeat(3, 1fr);
+      gap: 12px; margin-bottom: 20px;
+    }
+    .stat-card {
+      background: var(--paper); border-radius: var(--radius-sm);
+      padding: 16px; text-align: center;
+      box-shadow: var(--shadow-sm);
+      border-top: 3px solid var(--gold);
+    }
+    .stat-card .stat-num {
+      font-family: var(--font-serif); font-size: 28px; font-weight: 900;
+      color: var(--gold-dk); line-height: 1;
+    }
+    .stat-card .stat-label {
+      font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.1em;
+      text-transform: uppercase; color: var(--ink-soft); margin-top: 4px;
+    }
 
-  setDayMode(dayModalMode);
-  resetBreakFormFields();
-  renderDayBreaksList();
+    /* Footer */
+    .admin-foot {
+      text-align: center; font-size: 12px; color: var(--ink-soft);
+      margin-top: 32px; padding-top: 16px;
+      border-top: 1px solid var(--line);
+    }
+    .admin-foot a { color: var(--gold); text-decoration: none; }
+    .admin-foot .sep { margin: 0 8px; opacity: 0.3; }
 
-  document.getElementById("dayOverlay").classList.add("is-open");
-}
+    @media (max-width: 440px) {
+      .stats-bar { grid-template-columns: repeat(2, 1fr); }
+      .admin-header-left h1 { font-size: 24px; }
+    }
+  </style>
+</head>
+<body class="barber-bg page-fade">
+  <div class="page">
 
-function closeDayModal() {
-  document.getElementById("dayOverlay").classList.remove("is-open");
-  dayModalDateKey = null;
-}
-
-function setDayMode(mode) {
-  dayModalMode = mode;
-  document.querySelectorAll("#dayModeGrid .scope-card").forEach((c) => {
-    c.classList.toggle("is-active", c.dataset.mode === mode);
-  });
-  document.getElementById("dayClosedReasonField").style.display = mode === "closed" ? "" : "none";
-  document.getElementById("dayHourBlocksSection").style.display = mode === "closed" ? "none" : "";
-}
-
-function resetBreakFormFields() {
-  selectedBreakType = "desayuno";
-  document.querySelectorAll("#breakTypeGrid .meal-type-card").forEach((c) =>
-    c.classList.toggle("is-active", c.dataset.type === "desayuno")
-  );
-  document.getElementById("breakCustomLabelField").style.display = "none";
-  document.getElementById("breakCustomLabel").value = "";
-  document.getElementById("breakStart").value = "08:00";
-  document.getElementById("breakEnd").value = "09:00";
-}
-
-function renderDayBreaksList() {
-  const box = document.getElementById("dayBreaksList");
-  box.innerHTML = "";
-
-  if (dayModalBreaks.length === 0) {
-    box.innerHTML = `<p class="empty" style="padding:8px 0;">Todavía no has bloqueado ninguna hora este día</p>`;
-    return;
-  }
-
-  dayModalBreaks
-    .slice()
-    .sort((a, b) => a.startTime.localeCompare(b.startTime))
-    .forEach((b) => {
-      const row = document.createElement("div");
-      row.className = "meal-row";
-      row.innerHTML = `
-        <div class="meal-info">
-          <span class="meal-title">${mealIcon(b.type)} ${escapeHtml(mealLabel(b))}</span>
-          <span class="meal-time">${formatTime12h(b.startTime)} – ${formatTime12h(b.endTime)} · ${formatDurationHours(b.startTime, b.endTime)}</span>
-        </div>
-      `;
-      const delBtn = document.createElement("button");
-      delBtn.className = "btn-delete-small";
-      delBtn.setAttribute("aria-label", "Quitar este bloqueo de horas");
-      delBtn.textContent = "✕";
-      delBtn.addEventListener("click", () => {
-        Store.deleteBreak(b.id);
-        dayModalBreaks = dayModalBreaks.filter((x) => x.id !== b.id);
-        renderDayBreaksList();
-        renderCalendar();
-      });
-      row.appendChild(delBtn);
-      box.appendChild(row);
-    });
-}
-
-function addBreakToDay() {
-  const start = document.getElementById("breakStart").value;
-  const end = document.getElementById("breakEnd").value;
-
-  if (!start || !end) { alert("Elige la hora de inicio y la hora final."); return; }
-  if (timeToMinutes(end) <= timeToMinutes(start)) {
-    alert("La hora final debe ser después de la hora de inicio.");
-    return;
-  }
-
-  let customLabel = "";
-  if (selectedBreakType === "descanso") {
-    customLabel = document.getElementById("breakCustomLabel").value.trim();
-    if (!customLabel) { alert("Escribe el motivo de este bloqueo."); return; }
-  }
-
-  const brk = Store.addBreak({
-    type: selectedBreakType,
-    customLabel,
-    startTime: start,
-    endTime: end,
-    startDate: dayModalDateKey,
-    endDate: dayModalDateKey,
-  });
-
-  dayModalBreaks.push(brk);
-  renderDayBreaksList();
-  renderCalendar();
-  resetBreakFormFields();
-}
-
-function saveDayModal() {
-  if (!dayModalDateKey) return;
-
-  if (dayModalMode === "closed") {
-    const reason = document.getElementById("dayClosedReason").value.trim();
-    Store.setRestDay(dayModalDateKey, reason);
-    Store.getBreaksForDate(dayModalDateKey).forEach((b) => Store.deleteBreak(b.id));
-  } else {
-    Store.removeRestDay(dayModalDateKey);
-  }
-
-  closeDayModal();
-  renderCalendar();
-}
-
-function initDayModal() {
-  document.querySelectorAll("#dayModeGrid .scope-card").forEach((card) => {
-    card.addEventListener("click", () => setDayMode(card.dataset.mode));
-  });
-
-  document.querySelectorAll("#breakTypeGrid .meal-type-card").forEach((card) => {
-    card.addEventListener("click", () => {
-      document.querySelectorAll("#breakTypeGrid .meal-type-card").forEach((c) => c.classList.remove("is-active"));
-      card.classList.add("is-active");
-      selectedBreakType = card.dataset.type;
-      document.getElementById("breakCustomLabelField").style.display =
-        selectedBreakType === "descanso" ? "" : "none";
-    });
-  });
-
-  document.getElementById("btnAddBreak").addEventListener("click", addBreakToDay);
-  document.getElementById("btnDaySave").addEventListener("click", saveDayModal);
-  document.getElementById("btnDayCancel").addEventListener("click", closeDayModal);
-  document.getElementById("btnDayClose").addEventListener("click", closeDayModal);
-  document.getElementById("dayOverlay").addEventListener("click", (e) => {
-    if (e.target.id === "dayOverlay") closeDayModal();
-  });
-}
-
-/* ---------------- MODAL DE RECHAZO ---------------- */
-
-let rejectAppt = null;
-
-function initRejectModal() {
-  const modal = document.createElement("div");
-  modal.id = "rejectOverlay";
-  modal.style.cssText = `
-    display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);
-    z-index:1000;align-items:center;justify-content:center;
-  `;
-  modal.innerHTML = `
-    <div style="background:#f5f0e8;border-radius:16px;padding:24px;max-width:420px;width:90%;margin:auto;border:1px solid #d4c9b0;">
-      <h3 style="margin:0 0 8px;color:#1a1a1a;">❌ Rechazar cita</h3>
-      <p id="rejectClientName" style="font-weight:600;margin:0 0 16px;color:#333;font-size:14px;"></p>
-
-      <label style="display:block;margin-bottom:6px;font-size:14px;color:#333;">¿Por qué no se puede?</label>
-      <input id="rejectReason" type="text" placeholder="Ej: Ya tengo ese horario lleno"
-        style="width:100%;padding:10px;border:1px solid #c5b99a;border-radius:8px;font-size:14px;box-sizing:border-box;margin-bottom:16px;background:#fff;color:#111;" />
-
-      <label style="display:block;margin-bottom:6px;font-size:14px;color:#333;">Sugerir otro horario (opcional)</label>
-      <div style="display:flex;gap:8px;margin-bottom:16px;">
-        <input id="rejectSuggestDate" type="date"
-          style="flex:1;padding:10px;border:1px solid #c5b99a;border-radius:8px;font-size:14px;background:#fff;color:#111;" />
-        <select id="rejectSuggestTime"
-          style="flex:1;padding:10px;border:1px solid #c5b99a;border-radius:8px;font-size:14px;background:#fff;color:#111;">
-          <option value="">Sin hora</option>
-        </select>
+    <!-- Header -->
+    <header class="admin-header">
+      <div class="admin-header-left">
+        <p id="bizTagline">Panel de Barber&#237;a</p>
+        <h1>Panel del Due&#241;o</h1>
       </div>
+      <div class="admin-header-right">
+        <span class="badge" style="background:rgba(212,168,67,0.15);color:var(--gold-dk);border:1px solid var(--line-warm);font-family:var(--font-mono);font-size:10px;letter-spacing:0.12em;text-transform:uppercase;padding:5px 12px;border-radius:999px;">&#128274; Privado</span>
+        <button class="btn btn-ghost btn-small" id="btnLogout" style="display:none;">Cerrar sesi&#243;n</button>
+      </div>
+    </header>
 
-      <div style="display:flex;gap:8px;">
-        <button id="btnRejectCancel"
-          style="flex:1;padding:12px;border:1px solid #c5b99a;border-radius:8px;background:#fff;color:#333;cursor:pointer;">
-          Cancelar
-        </button>
-        <button id="btnRejectConfirm"
-          style="flex:1;padding:12px;border:none;border-radius:8px;background:#e53935;color:#fff;font-weight:600;cursor:pointer;">
-          Rechazar y avisar
-        </button>
+    <!-- Lock screen -->
+    <div class="lock-wrap" id="lockScreen">
+      <div class="sheet">
+        <span class="lock-icon">&#128136;</span>
+        <h2>Acceso al panel</h2>
+        <p class="sub">Inicia sesi&#243;n para gestionar tus citas</p>
+        <div class="field" style="margin-top:20px;">
+          <label for="userInput">Usuario</label>
+          <input type="text" id="userInput" autocomplete="username" placeholder="admin" />
+        </div>
+        <div class="field">
+          <label for="passInput">Contrase&#241;a</label>
+          <input type="password" id="passInput" autocomplete="current-password" placeholder="&#8226;&#8226;&#8226;&#8226;" />
+        </div>
+        <button class="btn btn-primary" id="btnUnlock" style="margin-top:8px;">Entrar al panel</button>
       </div>
     </div>
-  `;
-  document.body.appendChild(modal);
 
-  document.getElementById("btnRejectCancel").addEventListener("click", closeRejectModal);
-  document.getElementById("btnRejectConfirm").addEventListener("click", confirmReject);
-  document.getElementById("rejectSuggestDate").addEventListener("change", fillSuggestHours);
-}
+    <!-- Panel -->
+    <div id="panel" style="display:none;">
 
-function fillSuggestHours() {
-  const dateVal = document.getElementById("rejectSuggestDate").value;
-  const sel = document.getElementById("rejectSuggestTime");
-  sel.innerHTML = '<option value="">Sin hora</option>';
-  if (!dateVal) return;
+      <!-- Stats -->
+      <div class="stats-bar" id="statsBar">
+        <div class="stat-card">
+          <div class="stat-num" id="statPending">0</div>
+          <div class="stat-label">Pendientes</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-num" id="statConfirmed">0</div>
+          <div class="stat-label">Confirmadas</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-num" id="statToday">0</div>
+          <div class="stat-label">Hoy</div>
+        </div>
+      </div>
 
-  const slots = buildSlots();
-  const busy = Store.getAppointmentsForDate(dateVal).map((a) => normTime(a.time));
-  const breaks = Store.getBreaksForDate(dateVal);
+      <!-- Calendario -->
+      <div class="sheet-admin">
+        <div class="cal-header-row">
+          <h2 id="calTitle">&#8212;</h2>
+          <div class="cal-nav">
+            <button class="btn btn-ghost btn-small" id="btnPrevMonth">&#9664;</button>
+            <button class="btn btn-ghost btn-small" id="btnNextMonth">&#9654;</button>
+          </div>
+        </div>
+        <p class="sub">Toca un d&#237;a para marcar descanso completo, bloquear horas, o quitar lo que ten&#237;as puesto.</p>
+        <div class="cal-grid" id="calGrid"></div>
+        <div class="cal-legend">
+          <span><i class="dot dot-normal"></i> D&#237;a normal</span>
+          <span><i class="dot dot-rest"></i> Descanso</span>
+          <span><i class="dot dot-partial"></i> Horas bloqueadas</span>
+        </div>
+      </div>
 
-  slots.forEach((time) => {
-    const mins = timeToMinutes(time);
-    const inBreak = breaks.some((b) =>
-      mins >= timeToMinutes(b.startTime) && mins < timeToMinutes(b.endTime)
-    );
-    if (!busy.includes(time) && !inBreak) {
-      const opt = document.createElement("option");
-      opt.value = time;
-      opt.textContent = formatTime12h(time);
-      sel.appendChild(opt);
+      <!-- Pendientes -->
+      <div class="sheet-admin" style="border-left-color:var(--gold);">
+        <h2>&#9203; Solicitudes pendientes</h2>
+        <p class="sub">Acepta o rechaza lo que lleg&#243; por la p&#225;gina</p>
+        <div id="pendingList"></div>
+      </div>
+
+      <!-- Confirmadas -->
+      <div class="sheet-admin" style="border-left-color:var(--sage);">
+        <h2>&#9989; Citas confirmadas</h2>
+        <p class="sub">Las citas que ya quedaron agendadas</p>
+        <div id="confirmedList"></div>
+      </div>
+
+    </div>
+
+    <footer class="admin-foot">
+      <a href="bienvenida.html">&#8592; Inicio</a>
+      <span class="sep">&#183;</span>
+      <a href="agenda.html">Ver p&#225;gina de citas</a>
+    </footer>
+  </div>
+
+  <!-- Modal disponibilidad -->
+  <div class="overlay" id="dayOverlay">
+    <div class="modal">
+      <button class="modal-close" id="btnDayClose" aria-label="Cerrar">&#10005;</button>
+      <h3>Disponibilidad del d&#237;a</h3>
+      <p class="modal-sub" id="dayModalDate">&#8212;</p>
+
+      <div class="field">
+        <label>&#191;Vas a trabajar este d&#237;a?</label>
+        <div class="scope-grid" id="dayModeGrid" style="grid-template-columns:repeat(2,1fr);">
+          <div class="scope-card is-active" data-mode="open">S&#237;, d&#237;a normal</div>
+          <div class="scope-card" data-mode="closed">No, descanso</div>
+        </div>
+      </div>
+
+      <div class="field" id="dayClosedReasonField" style="display:none;">
+        <label for="dayClosedReason">Motivo (opcional)</label>
+        <input type="text" id="dayClosedReason" placeholder="Ej: Vacaciones, festivo..." />
+      </div>
+
+      <div id="dayHourBlocksSection">
+        <div class="field" style="margin-top:4px;">
+          <label>&#191;Hay horas bloqueadas?</label>
+          <p class="sub" style="margin:-2px 0 12px;">Ej: desayuno, almuerzo, cita personal...</p>
+        </div>
+        <div id="dayBreaksList" style="margin-bottom:14px;"></div>
+        <div class="field">
+          <label>Tipo</label>
+          <div class="meal-type-grid" id="breakTypeGrid">
+            <div class="meal-type-card is-active" data-type="desayuno">
+              <span class="icon">&#127859;</span><span class="label">Desayuno</span>
+            </div>
+            <div class="meal-type-card" data-type="almuerzo">
+              <span class="icon">&#127869;&#65039;</span><span class="label">Almuerzo</span>
+            </div>
+            <div class="meal-type-card" data-type="descanso">
+              <span class="icon">&#9749;</span><span class="label">Otro</span>
+            </div>
+          </div>
+        </div>
+        <div class="field" id="breakCustomLabelField" style="display:none;">
+          <label for="breakCustomLabel">&#191;Cu&#225;l es el motivo?</label>
+          <input type="text" id="breakCustomLabel" placeholder="Ej: Mandado, reuni&#243;n..." />
+        </div>
+        <div class="field">
+          <label>&#191;De qu&#233; hora a qu&#233; hora?</label>
+          <div style="display:flex;gap:10px;">
+            <input type="time" id="breakStart" value="08:00" style="flex:1;" />
+            <input type="time" id="breakEnd" value="09:00" style="flex:1;" />
+          </div>
+        </div>
+        <button class="btn btn-ghost" id="btnAddBreak" type="button" style="width:100%;">+ Agregar bloqueo de horas</button>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn btn-ghost" id="btnDayCancel" type="button">Cancelar</button>
+        <button class="btn btn-primary" id="btnDaySave" type="button">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/config.js"></script>
+  <script src="js/dates.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/admin.js"></script>
+  <script>
+    // Stats
+    function updateStats() {
+      const all = Store.getAppointments();
+      const today = new Date().toISOString().substring(0, 10);
+      document.getElementById('statPending').textContent = all.filter(a => a.status === 'pendiente').length;
+      document.getElementById('statConfirmed').textContent = all.filter(a => a.status === 'confirmada').length;
+      document.getElementById('statToday').textContent = all.filter(a => String(a.date).substring(0,10) === today && a.status !== 'rechazada').length;
     }
-  });
-}
-
-function openRejectModal(appt) {
-  rejectAppt = appt;
-  document.getElementById("rejectClientName").textContent =
-    `Cliente: ${appt.name} · ${formatLong(fromDateKey(normDate(appt.date)))} · ${formatTime12h(normTime(appt.time))}`;
-  document.getElementById("rejectReason").value = "";
-
-  const nextDay = findNextAvailableDay(fromDateKey(normDate(appt.date)));
-  const nextKey = toDateKey(nextDay);
-  document.getElementById("rejectSuggestDate").value = nextKey;
-  fillSuggestHours();
-
-  const modal = document.getElementById("rejectOverlay");
-  modal.style.display = "flex";
-}
-
-function closeRejectModal() {
-  document.getElementById("rejectOverlay").style.display = "none";
-  rejectAppt = null;
-}
-
-function confirmReject() {
-  if (!rejectAppt) return;
-
-  const reason = document.getElementById("rejectReason").value.trim();
-  const suggestDate = document.getElementById("rejectSuggestDate").value;
-  const suggestTime = document.getElementById("rejectSuggestTime").value;
-
-  if (!reason) {
-    alert("Por favor escribe el motivo del rechazo.");
-    return;
-  }
-
-  Store.updateAppointmentStatus(rejectAppt.id, "rechazada");
-
-  const dateKey = normDate(rejectAppt.date);
-  const timeVal = normTime(rejectAppt.time);
-
-  let msg =
-    `❌ Hola *${rejectAppt.name}*, te escribe *${CONFIG.businessName}*.\n\n` +
-    `Lo sentimos mucho, tu cita del *${formatLong(fromDateKey(dateKey))}* ` +
-    `a las *${formatTime12h(timeVal)}* no se puede confirmar.\n\n` +
-    `*Motivo:* ${reason}`;
-
-  if (suggestDate && suggestTime) {
-    msg += `\n\n✅ Te sugerimos el *${formatLong(fromDateKey(suggestDate))}* ` +
-      `a las *${formatTime12h(suggestTime)}*.\n` +
-      `Si te queda bien, entra aquí y agenda esa hora:\n` +
-      `👉 ${window.location.origin}/agenda.html`;
-  } else {
-    msg += `\n\nPor favor entra a nuestra página y elige otro horario:\n` +
-      `👉 ${window.location.origin}/agenda.html`;
-  }
-
-  msg += `\n\n¡Quedamos atentos! 💈`;
-
-  openWhatsAppToClient(rejectAppt.phone, msg);
-  closeRejectModal();
-  renderAppointments();
-}
-
-/* ---------------- LISTAS DE CITAS ---------------- */
-
-function renderAppointments() {
-  const all = Store.getAppointments().sort((a, b) =>
-    (normDate(a.date) + normTime(a.time)).localeCompare(normDate(b.date) + normTime(b.time))
-  );
-
-  const pending   = all.filter((a) => a.status === "pendiente");
-  const confirmed = all.filter((a) => a.status === "confirmada");
-
-  const pendingBox = document.getElementById("pendingList");
-  pendingBox.innerHTML = "";
-  if (pending.length === 0) {
-    pendingBox.innerHTML = `<p class="empty">No hay solicitudes nuevas</p>`;
-  }
-  pending.forEach((a) => pendingBox.appendChild(renderApptCard(a, true)));
-
-  const confirmedBox = document.getElementById("confirmedList");
-  confirmedBox.innerHTML = "";
-  if (confirmed.length === 0) {
-    confirmedBox.innerHTML = `<p class="empty">Todavía no tienes citas confirmadas</p>`;
-  }
-  confirmed.forEach((a) => confirmedBox.appendChild(renderApptCard(a, false)));
-}
-
-function renderApptCard(appt, withActions) {
-  const card = document.createElement("div");
-  card.className = "appt";
-
-  const dateKey = normDate(appt.date);
-  const timeVal = normTime(appt.time);
-
-  const info = document.createElement("div");
-  info.innerHTML = `
-    <div class="who">${escapeHtml(appt.name)} · ${escapeHtml(appt.phone)}</div>
-    <div class="when">${formatLong(fromDateKey(dateKey))} · ${formatTime12h(timeVal)}${appt.service ? " · " + escapeHtml(appt.service) : ""}</div>
-  `;
-
-  const right = document.createElement("div");
-  right.style.cssText = "display:flex;align-items:center;gap:8px;flex-wrap:wrap;";
-
-  const tag = document.createElement("span");
-  tag.className = "tag tag-" + appt.status;
-  tag.textContent =
-    appt.status === "pendiente"  ? "Pendiente"  :
-    appt.status === "confirmada" ? "Confirmada" : "Rechazada";
-  right.appendChild(tag);
-
-  if (withActions) {
-    const actions = document.createElement("div");
-    actions.className = "appt-actions";
-
-    const acceptBtn = document.createElement("button");
-    acceptBtn.className = "btn btn-accept btn-small";
-    acceptBtn.textContent = "✅ Aceptar";
-    acceptBtn.addEventListener("click", () => acceptAppointment(appt));
-
-    const rejectBtn = document.createElement("button");
-    rejectBtn.className = "btn btn-reject btn-small";
-    rejectBtn.textContent = "❌ Rechazar";
-    rejectBtn.addEventListener("click", () => openRejectModal(appt));
-
-    actions.appendChild(acceptBtn);
-    actions.appendChild(rejectBtn);
-    right.appendChild(actions);
-  }
-
-  card.appendChild(info);
-  card.appendChild(right);
-  return card;
-}
-
-/* ---------------- ACCIONES SOBRE UNA CITA ---------------- */
-
-function acceptAppointment(appt) {
-  Store.updateAppointmentStatus(appt.id, "confirmada");
-
-  const dateKey = normDate(appt.date);
-  const timeVal = normTime(appt.time);
-
-  const msg =
-    `✅ Hola *${appt.name}*, tu cita en *${CONFIG.businessName}* quedó *confirmada* para el ` +
-    `*${formatLong(fromDateKey(dateKey))}* a las *${formatTime12h(timeVal)}*.` +
-    (appt.service ? `\nServicio: ${appt.service}.` : "") +
-    `\n\n¡Te esperamos! 💈`;
-
-  openWhatsAppToClient(appt.phone, msg);
-  renderAppointments();
-}
-
-/* ---------------- ENVÍO DE WHATSAPP ---------------- */
-function openWhatsAppToClient(phone, message) {
-  const digits = phone.replace(/[^0-9]/g, "");
-  const url = `https://wa.me/${digits}?text=${encodeURIComponent(message)}`;
-  const win = window.open(url, "_blank");
-  if (!win) window.location.href = url;
-}
-
-function escapeHtml(str) {
-  const div = document.createElement("div");
-  div.textContent = str;
-  return div.innerHTML;
-}
-
-document.addEventListener("DOMContentLoaded", init);
+    const _origUnlock = window.unlock;
+    document.addEventListener('DOMContentLoaded', () => {
+      setInterval(updateStats, 2000);
+    });
+  </script>
+</body>
+</html>
