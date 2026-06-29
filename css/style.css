@@ -512,3 +512,16 @@ a:focus-visible, button:focus-visible, .flap:focus-visible, .date-chip:focus-vis
 @media (min-width: 441px) and (max-width: 860px) { .page { padding: 32px 28px 80px; } .landing-card { max-width: 440px; padding: 40px 36px 36px; } .icon-chip { width: 70px; } }
 @media (max-width: 440px) { header.top h1 { font-size: 30px; } .modal { padding: 22px 18px; } .page { padding: 24px 14px 60px; } .wa-float { width: 50px; height: 50px; right: 14px; bottom: 14px; bottom: calc(14px + env(safe-area-inset-bottom, 0px)); } .icon-strip { gap: 10px; } .icon-chip { width: 54px; } .icon-chip .icon-circle { width: 44px; height: 44px; } .calendar-grid { gap: 4px; } .cal-day-num { font-size: 13px; } .calendar-nav-btn { width: 32px; height: 32px; } }
 @media (prefers-reduced-motion: reduce) { .wa-float-ping { animation: none; } }
+
+/* ─── FIX IPHONE: modal no tapado por barra de Safari ─── */
+.overlay {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  align-items: flex-start;
+  padding-top: max(20px, env(safe-area-inset-top, 20px));
+  overflow-y: auto;
+}
+.modal {
+  max-height: calc(100vh - 40px - env(safe-area-inset-bottom, 0px) - env(safe-area-inset-top, 0px));
+  overflow-y: auto;
+  margin: auto;
+}
