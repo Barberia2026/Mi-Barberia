@@ -4,8 +4,8 @@
 
 let selectedDateKey = null;
 let selectedService = "Corte de pelo";
-let pendingBooking = null; // { dateKey, time }
-let clientCalMonth = new Date(); // mes que se está mostrando en el calendario del cliente
+let pendingBooking = null;
+let clientCalMonth = new Date();
 
 async function init() {
   document.getElementById("bizName").textContent = CONFIG.businessName;
@@ -74,7 +74,7 @@ async function init() {
   }
 }
 
-/* ---------------- SELECTOR DE SERVICIO (en el modal) ---------------- */
+/* ---------------- SELECTOR DE SERVICIO ---------------- */
 
 function initServiceSelector() {
   const grid = document.getElementById("serviceGrid");
@@ -107,7 +107,7 @@ function hideContactFields() {
   document.getElementById("contactReveal").classList.remove("is-open");
 }
 
-/* ---------------- CALENDARIO (selector de día) ---------------- */
+/* ---------------- CALENDARIO ---------------- */
 
 function calendarBounds() {
   const today = new Date();
@@ -241,7 +241,6 @@ function renderDay() {
   }
 
   const dayBreaks = Store.getBreaksForDate(selectedDateKey);
-
   const grid = document.createElement("div");
   grid.className = "slots-grid";
 
@@ -319,6 +318,12 @@ function openModal(dateKey, time) {
   document.getElementById("successScreen").classList.remove("is-visible");
 
   document.getElementById("overlay").classList.add("is-open");
+
+  // iPhone: scroll al inicio del modal
+  setTimeout(() => {
+    const modal = document.querySelector(".modal");
+    if (modal) modal.scrollTop = 0;
+  }, 50);
 }
 
 function closeModal() {
@@ -358,7 +363,8 @@ function confirmBooking() {
   function goToWhatsapp() {
     closeModal();
     renderDay();
-    window.open(url, "_blank");
+    // Funciona en iPhone, Android, Windows y todos los navegadores
+    window.location.href = url;
   }
 
   requestAnimationFrame(() => {
