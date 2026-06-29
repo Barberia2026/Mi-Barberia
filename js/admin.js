@@ -41,6 +41,9 @@ function init() {
   initDayModal();
   initRejectModal();
 
+  // Fix iPhone: padding inferior para que la barra de Safari no tape
+  document.body.style.paddingBottom = "calc(20px + env(safe-area-inset-bottom, 0px))";
+
   if (sessionStorage.getItem("admin_ok") === "1") unlock();
 }
 
@@ -281,9 +284,10 @@ function initRejectModal() {
   modal.style.cssText = `
     display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);
     z-index:1000;align-items:center;justify-content:center;
+    padding-bottom:env(safe-area-inset-bottom, 0px);
   `;
   modal.innerHTML = `
-    <div style="background:#f5f0e8;border-radius:16px;padding:24px;max-width:420px;width:90%;margin:auto;border:1px solid #d4c9b0;">
+    <div style="background:#f5f0e8;border-radius:16px;padding:24px;max-width:420px;width:90%;margin:auto;border:1px solid #d4c9b0;max-height:90vh;overflow-y:auto;">
       <h3 style="margin:0 0 8px;color:#1a1a1a;">❌ Rechazar cita</h3>
       <p id="rejectClientName" style="font-weight:600;margin:0 0 16px;color:#333;font-size:14px;"></p>
       <label style="display:block;margin-bottom:6px;font-size:14px;color:#333;">¿Por qué no se puede?</label>
@@ -300,11 +304,11 @@ function initRejectModal() {
       </div>
       <div style="display:flex;gap:8px;">
         <button id="btnRejectCancel"
-          style="flex:1;padding:12px;border:1px solid #c5b99a;border-radius:8px;background:#fff;color:#333;cursor:pointer;">
+          style="flex:1;padding:12px;border:1px solid #c5b99a;border-radius:8px;background:#fff;color:#333;cursor:pointer;font-size:15px;">
           Cancelar
         </button>
         <button id="btnRejectConfirm"
-          style="flex:1;padding:12px;border:none;border-radius:8px;background:#e53935;color:#fff;font-weight:600;cursor:pointer;">
+          style="flex:1;padding:12px;border:none;border-radius:8px;background:#e53935;color:#fff;font-weight:600;cursor:pointer;font-size:15px;">
           Rechazar y avisar
         </button>
       </div>
@@ -413,16 +417,11 @@ function renderApptCard(appt, withActions) {
   card.className = "appt";
   const dateKey = normDate(appt.date);
   const timeVal = normTime(appt.time);
-  const initials = (appt.name || "?").charAt(0).toUpperCase();
 
   const left = document.createElement("div");
-  left.className = "appt-left";
   left.innerHTML = `
-    <div class="appt-avatar">${initials}</div>
-    <div>
-      <div class="who">${escapeHtml(appt.name)} · ${escapeHtml(appt.phone)}</div>
-      <div class="when">${formatLong(fromDateKey(dateKey))} · ${formatTime12h(timeVal)}${appt.service ? " · " + escapeHtml(appt.service) : ""}</div>
-    </div>
+    <div class="who">${escapeHtml(appt.name)} · ${escapeHtml(appt.phone)}</div>
+    <div class="when">${formatLong(fromDateKey(dateKey))} · ${formatTime12h(timeVal)}${appt.service ? " · " + escapeHtml(appt.service) : ""}</div>
   `;
 
   const right = document.createElement("div");
