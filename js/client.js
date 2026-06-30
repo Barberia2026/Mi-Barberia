@@ -353,7 +353,7 @@ function confirmBooking() {
     `Quiero pedir una cita para el ${formatLong(fromDateKey(dateKey))} a las ${formatTime12h(time)}.\n` +
     `Servicio: ${selectedService}`;
 
-  const url = `https://wa.me/${CONFIG.whatsappNumber}?text=${encodeURIComponent(message)}`;
+  const url = `https://api.whatsapp.com/send?phone=${CONFIG.whatsappNumber}&text=${encodeURIComponent(message)}`;
 
   const formContentEl = document.getElementById("formContent");
   const successScreenEl = document.getElementById("successScreen");
