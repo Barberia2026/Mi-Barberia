@@ -41,7 +41,6 @@ function init() {
   initDayModal();
   initRejectModal();
 
-  // Fix iPhone: padding inferior para que la barra de Safari no tape
   document.body.style.paddingBottom = "calc(20px + env(safe-area-inset-bottom, 0px))";
 
   if (sessionStorage.getItem("admin_ok") === "1") unlock();
@@ -437,17 +436,33 @@ function renderApptCard(appt, withActions) {
   if (withActions) {
     const actions = document.createElement("div");
     actions.className = "appt-actions";
+
     const acceptBtn = document.createElement("button");
     acceptBtn.className = "btn btn-accept btn-small";
     acceptBtn.textContent = "✅ Aceptar";
     acceptBtn.addEventListener("click", () => acceptAppointment(appt));
+
     const rejectBtn = document.createElement("button");
     rejectBtn.className = "btn btn-reject btn-small";
     rejectBtn.textContent = "❌ Rechazar";
     rejectBtn.addEventListener("click", () => openRejectModal(appt));
+
     actions.appendChild(acceptBtn);
     actions.appendChild(rejectBtn);
     right.appendChild(actions);
+  } else {
+    // CAMBIO 2: Botón "Atendida" para citas confirmadas
+    const doneBtn = document.createElement("button");
+    doneBtn.className = "btn btn-small";
+    doneBtn.style.cssText = "background:#5a9472;color:#fff;border:none;";
+    doneBtn.textContent = "✓ Atendida";
+    doneBtn.addEventListener("click", () => {
+      if (confirm(`¿Marcar la cita de ${appt.name} como atendida y borrarla?`)) {
+        Store.deleteAppointment(appt.id);
+        renderAppointments();
+      }
+    });
+    right.appendChild(doneBtn);
   }
 
   card.appendChild(left);
