@@ -1,23 +1,5 @@
 /* ============================================================
    ALMACENAMIENTO DE DATOS
-
-   Tiene dos modos, y elige uno automáticamente según CONFIG:
-
-   • MODO NUBE (CONFIG.sheetApiUrl tiene un link):
-     Las citas, descansos y horarios de comida se guardan en una
-     Hoja de Cálculo de Google (gratis), a través de un script
-     (Apps Script) que actúa como mini-servidor. Así, cuando un
-     cliente pide una cita, aparece "Ocupado" para TODOS los demás
-     clientes que entren después (no solo en su propio celular).
-     Ver LEEME-CITAS-EN-LINEA.md para configurarlo.
-
-   • MODO LOCAL (CONFIG.sheetApiUrl vacío, como venía por defecto):
-     Todo se guarda solo en este navegador (localStorage), igual
-     que antes. Sirve para probar la app sin configurar nada.
-
-   El resto de la app (client.js, admin.js, dates.js) usa "Store"
-   exactamente igual sin importar el modo, así que no hay que
-   tocar nada más al activar el modo nube.
    ============================================================ */
 
 const KEYS = {
@@ -28,9 +10,6 @@ const KEYS = {
 
 const useCloud = !!(CONFIG.sheetApiUrl && CONFIG.sheetApiUrl.trim());
 
-// ---------------------------------------------------------------
-// MODO NUBE — caché en memoria + sincronización con Google Sheets
-// ---------------------------------------------------------------
 let _cache = { appointments: [], restDays: [], breaks: [] };
 
 async function _cloudFetchAll() {
@@ -45,8 +24,6 @@ async function _cloudFetchAll() {
   }
 }
 
-// Content-Type "text/plain" a propósito: evita que el navegador mande
-// una petición de pre-vuelo (CORS preflight) que Apps Script no contesta.
 function _cloudPost(payload) {
   return fetch(CONFIG.sheetApiUrl, {
     method: "POST",
@@ -60,19 +37,12 @@ function _cloudPost(payload) {
     });
 }
 
-// Si dos clientes piden la MISMA hora casi al mismo tiempo, el script de
-// Google solo deja pasar al primero. client.js puede registrar aquí qué
-// hacer cuando el navegador se entera de que llegó tarde (avisarle al
-// cliente y refrescar los horarios).
 let _onBookingConflict = function () {};
 function setBookingConflictHandler(fn) {
   _onBookingConflict = fn;
 }
 
 const Store = {
-  // Trae los datos más recientes desde la nube (no hace nada en modo local).
-  // Llamar al cargar la página, y de vez en cuando (polling), para que un
-  // horario se vea "Ocupado" apenas alguien más lo toma.
   async refresh() {
     if (useCloud) await _cloudFetchAll();
   },
@@ -97,12 +67,9 @@ const Store = {
     appt.status = "pendiente";
 
     if (useCloud) {
-      // Optimista: se muestra "Ocupado" de inmediato en este navegador,
-      // mientras se confirma con el servidor en segundo plano.
       _cache.appointments.push(appt);
       _cloudPost({ action: "addAppointment", ...appt }).then((result) => {
         if (result && result.error === "ocupado") {
-          // Alguien más se adeló y tomó esa misma hora primero.
           _cache.appointments = _cache.appointments.filter((a) => a.id !== appt.id);
           _onBookingConflict(appt);
         }
@@ -131,7 +98,18 @@ const Store = {
     return list[idx];
   },
 
-  // Citas activas (pendiente o confirmada) para una fecha dada
+  // CAMBIO 2: Borrar cita permanentemente de la hoja
+  deleteAppointment(id) {
+    if (useCloud) {
+      _cache.appointments = _cache.appointments.filter((a) => a.id !== id);
+      _cloudPost({ action: "deleteAppointment", id });
+      return _cache.appointments;
+    }
+    const list = this.getAppointments().filter((a) => a.id !== id);
+    this.saveAppointments(list);
+    return list;
+  },
+
   getAppointmentsForDate(dateKey) {
     return this.getAppointments().filter(
       (a) => a.date === dateKey && a.status !== "rechazada"
@@ -168,7 +146,6 @@ const Store = {
     return this.getRestDays().find((d) => d.date === dateKey) || null;
   },
 
-  // Marca dateKey como descanso de día completo, con un motivo opcional.
   setRestDay(dateKey, reason) {
     const cleaned = (reason || "").trim();
     if (useCloud) {
@@ -195,7 +172,7 @@ const Store = {
     return days;
   },
 
-  // ---------- HORARIOS DE COMIDA (desayuno / almuerzo / otro descanso) ----------
+  // ---------- BREAKS ----------
   getBreaks() {
     if (useCloud) return _cache.breaks;
     const raw = localStorage.getItem(KEYS.breaks);
@@ -230,7 +207,6 @@ const Store = {
     return list;
   },
 
-  // Horarios de comida que aplican a una fecha dada, ordenados por hora
   getBreaksForDate(dateKey) {
     return this.getBreaks()
       .filter((b) => dateKey >= b.startDate && dateKey <= b.endDate)
