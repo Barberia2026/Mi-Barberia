@@ -1,22 +1,5 @@
 /* ============================================================
    MINI-SERVIDOR GRATIS PARA "BARBERÍA ESTILO"
-   ------------------------------------------------------------
-   Este código va pegado en el editor de Apps Script de tu Hoja
-   de Cálculo de Google (ver LEEME-CITAS-EN-LINEA.md para los
-   pasos). No necesitas entender el código para usarlo, solo
-   copiarlo tal cual.
-
-   Espera 3 pestañas (tabs) en la hoja, con estos encabezados
-   exactos en la fila 1:
-
-   Pestaña "Appointments":
-     id | date | time | name | phone | service | status | createdAt
-
-   Pestaña "RestDays":
-     date | reason
-
-   Pestaña "Breaks":
-     id | type | customLabel | startTime | endTime | startDate | endDate
    ============================================================ */
 
 function doGet(e) {
@@ -40,6 +23,7 @@ function doPost(e) {
   try {
     if (action === "addAppointment") result = _addAppointment(body);
     else if (action === "updateAppointmentStatus") result = _updateAppointmentStatus(body);
+    else if (action === "deleteAppointment") result = _deleteAppointment(body);
     else if (action === "setRestDay") result = _setRestDay(body);
     else if (action === "removeRestDay") result = _removeRestDay(body);
     else if (action === "addBreak") result = _addBreak(body);
@@ -57,15 +41,13 @@ function _addAppointment(body) {
   var sh = _sheet("Appointments");
   var existing = _rowsToObjects(sh);
 
-  // Evita doble-reserva: si alguien más ya tiene esa misma fecha+hora
-  // activa (no rechazada), no se deja pasar esta nueva.
   var clash = existing.some(function (a) {
     return a.date === body.date && a.time === body.time && a.status !== "rechazada";
   });
   if (clash) return { error: "ocupado" };
 
   var id = body.id || ("a_" + Date.now() + "_" + Math.floor(Math.random() * 1000));
-  var createdAt = body.createdAt || new Date().toISOString();
+  var createdAt = Utilities.formatDate(new Date(), "America/Bogota", "dd/MM/yyyy HH:mm");
   sh.appendRow([id, body.date, body.time, body.name, body.phone, body.service, "pendiente", createdAt]);
   return { id: id, date: body.date, time: body.time, name: body.name, phone: body.phone, service: body.service, status: "pendiente", createdAt: createdAt };
 }
@@ -74,8 +56,21 @@ function _updateAppointmentStatus(body) {
   var sh = _sheet("Appointments");
   var data = sh.getDataRange().getValues();
   for (var r = 1; r < data.length; r++) {
-    if (data[r][0] === body.id) {
-      sh.getRange(r + 1, 7).setValue(body.status); // columna 7 = status
+    if (String(data[r][0]) === String(body.id)) {
+      sh.getRange(r + 1, 7).setValue(body.status);
+      return { ok: true };
+    }
+  }
+  return { error: "no-encontrado" };
+}
+
+// CAMBIO 3: Borrar cita permanentemente de la hoja
+function _deleteAppointment(body) {
+  var sh = _sheet("Appointments");
+  var data = sh.getDataRange().getValues();
+  for (var r = data.length - 1; r >= 1; r--) {
+    if (String(data[r][0]) === String(body.id)) {
+      sh.deleteRow(r + 1);
       return { ok: true };
     }
   }
@@ -106,7 +101,7 @@ function _removeRestDay(body) {
   return { ok: true };
 }
 
-/* ---------------- HORARIOS DE COMIDA ---------------- */
+/* ---------------- BREAKS ---------------- */
 
 function _addBreak(body) {
   var sh = _sheet("Breaks");
@@ -139,9 +134,27 @@ function _rowsToObjects(sheet) {
   var out = [];
   for (var r = 1; r < data.length; r++) {
     var row = data[r];
-    if (row[0] === "" || row[0] === null) continue; // fila vacía
+    if (row[0] === "" || row[0] === null) continue;
     var obj = {};
-    for (var c = 0; c < headers.length; c++) obj[headers[c]] = row[c];
+    for (var c = 0; c < headers.length; c++) {
+      var val = row[c];
+      if (val instanceof Date) {
+        var h = headers[c];
+        if (h === "date" || h === "startDate" || h === "endDate") {
+          var y = val.getFullYear();
+          var m = String(val.getMonth() + 1).padStart(2, "0");
+          var d = String(val.getDate()).padStart(2, "0");
+          val = y + "-" + m + "-" + d;
+        } else if (h === "time" || h === "startTime" || h === "endTime") {
+          var hh = String(val.getHours()).padStart(2, "0");
+          var mm = String(val.getMinutes()).padStart(2, "0");
+          val = hh + ":" + mm;
+        } else {
+          val = val.toISOString();
+        }
+      }
+      obj[headers[c]] = val;
+    }
     out.push(obj);
   }
   return out;
