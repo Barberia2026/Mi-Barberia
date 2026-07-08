@@ -211,6 +211,8 @@ function selectDate(dateKey) {
 
 function renderDay() {
   const date = fromDateKey(selectedDateKey);
+  const todayKey = toDateKey(new Date());
+  const now = new Date();
 
   document.getElementById("selectedDayLabel").textContent = formatLong(date);
 
@@ -247,17 +249,38 @@ function renderDay() {
   const busy = Store.getAppointmentsForDate(selectedDateKey).map((a) => a.time);
   const slots = buildSlots();
 
+  // CAMBIO 1: Para hoy, ocultar slots que ya pasaron
+  const isToday = selectedDateKey === todayKey;
+  const nowMinutes = now.getHours() * 60 + now.getMinutes();
+
   let i = 0;
   while (i < slots.length) {
     const time = slots[i];
     const slotStart = timeToMinutes(time);
     const slotEnd = slotStart + CONFIG.slotMinutes;
 
+    // Si es hoy y la hora ya pasó, saltar
+    if (isToday && slotStart <= nowMinutes) {
+      i++;
+      continue;
+    }
+
     const covering = dayBreaks.find(
       (b) => slotStart < timeToMinutes(b.endTime) && slotEnd > timeToMinutes(b.startTime)
     );
 
     if (covering) {
+      // Si es hoy y el break ya pasó, saltarlo
+      if (isToday && timeToMinutes(covering.endTime) <= nowMinutes) {
+        while (i < slots.length) {
+          const s = timeToMinutes(slots[i]);
+          const e = s + CONFIG.slotMinutes;
+          if (s < timeToMinutes(covering.endTime) && e > timeToMinutes(covering.startTime)) {
+            i++;
+          } else { break; }
+        }
+        continue;
+      }
       const flap = document.createElement("div");
       flap.className = "flap-compact is-break";
       flap.innerHTML = `
@@ -319,7 +342,6 @@ function openModal(dateKey, time) {
 
   document.getElementById("overlay").classList.add("is-open");
 
-  // iPhone: scroll al inicio del modal
   setTimeout(() => {
     const modal = document.querySelector(".modal");
     if (modal) modal.scrollTop = 0;
@@ -363,7 +385,6 @@ function confirmBooking() {
   function goToWhatsapp() {
     closeModal();
     renderDay();
-    // Funciona en iPhone, Android, Windows y todos los navegadores
     window.location.href = url;
   }
 
